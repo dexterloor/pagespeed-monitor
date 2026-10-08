@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { build } = require('../scripts/build-workflows');
+const { build, libSource, FORM_FIELD } = require('../scripts/build-workflows');
 const { buildReport } = require('../scripts/lib/psi');
 const { fallbackAnalysis } = require('../scripts/lib/analysis');
 
@@ -185,6 +185,36 @@ test('URLs to check uses the webhook list, or the daily list on schedule', async
   const daily = await runCodeNode(jsCode, { items: [{ json: {} }] });
   assert.equal(daily.length, require('../config/urls.json').urls.length);
   assert.equal(daily[0].json.trigger, 'schedule');
-  const hook = await runCodeNode(jsCode, { items: [{ json: { urls: ['https://a.example/'] } }] });
+  const hook = await runCodeNode(jsCode, { items: [{ json: { urls: ['https://a.example/'], trigger: 'webhook' } }] });
   assert.equal(hook[0].json.trigger, 'webhook');
+  const form = await runCodeNode(jsCode, { items: [{ json: { urls: ['https://a.example/'], trigger: 'form' } }] });
+  assert.equal(form[0].json.trigger, 'form');
+});
+
+test('Check a page form: same validation and run path as the webhook', async () => {
+  const jsCode = byName(main, 'Check form').parameters.jsCode;
+  const check = async (text) => (await runCodeNode(jsCode, { items: [{ json: { [FORM_FIELD]: text } }] }))[0].json;
+
+  const ok = await check('https://a.example/\nnope\nhttps://a.example/');
+  assert.equal(ok.valid, true);
+  assert.equal(ok.trigger, 'form');
+  assert.equal(JSON.stringify(ok.urls), '["https://a.example/"]');
+  assert.match(ok.skipped, /Skipped .*: nope$/);
+  assert.equal((await check('https://a.example/')).skipped, '');
+  assert.match((await check('nope')).error, /start with https:\/\//);
+  assert.match((await check('')).error, /at least one/);
+
+  // Both checks share scripts/lib/request.js rather than keeping their own copy.
+  const lib = libSource('request.js');
+  assert.ok(byName(main, 'Check request').parameters.jsCode.includes(lib));
+  assert.ok(jsCode.includes(lib));
+
+  const trigger = byName(main, 'Check a page (form)');
+  assert.equal(trigger.type, 'n8n-nodes-base.formTrigger');
+  assert.equal(trigger.parameters.formFields.values[0].fieldLabel, FORM_FIELD);
+  assert.deepEqual(main.connections['Check a page (form)'].main[0].map((c) => c.node), ['Check form']);
+  assert.deepEqual(main.connections['Valid form?'].main.map((out) => out.map((c) => c.node)),
+    [['Form: check started'], ['Form: not accepted']]);
+  assert.deepEqual(main.connections['Form: check started'].main[0].map((c) => c.node), ['URLs to check']);
+  assert.equal(main.connections['Form: not accepted'], undefined, 'a rejected form starts no run');
 });

@@ -107,7 +107,7 @@
         200
       ],
       "parameters": {
-        "jsCode": "// Accepts {\"url\": \"...\"} or {\"urls\": [\"...\", \"...\"]}: up to 10 public http(s) URLs.\nconst body = $input.first().json.body || {};\nconst requested = [].concat(body.urls || [], body.url || []).map((u) => String(u).trim());\nconst urls = [...new Set(requested)].filter((u) => /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i.test(u));\n\nlet error = null;\nif (!requested.length) error = 'Send {\"url\": \"https://...\"} or {\"urls\": [\"https://...\", ...]}';\nelse if (!urls.length) error = 'No valid http(s) URLs in the request';\nelse if (urls.length > 10) error = 'At most 10 URLs per request';\n\nreturn [{ json: { valid: !error, error, urls } }];\n"
+        "jsCode": "// GENERATED from scripts/lib/request.js by scripts/build-workflows.js.\n// Edit those files and run `npm run build:workflows`. Changes made here are overwritten.\n\n// ===== scripts/lib/request.js =====\n// Checks the URLs sent to an on-demand run. The webhook and the \"Check a page\"\n// form both use this, so they accept and reject exactly the same input.\n\nconst MAX_URLS_PER_REQUEST = 10;\nconst URL_PATTERN = /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i;\n\n// requested: the raw strings as sent. Returns the unique valid URLs, the ones\n// that were dropped, and an error code when nothing can be checked.\nfunction checkUrls(requested) {\n  const trimmed = requested.map((u) => String(u).trim()).filter(Boolean);\n  const unique = [...new Set(trimmed)];\n  const urls = unique.filter((u) => URL_PATTERN.test(u));\n  const rejected = unique.filter((u) => !URL_PATTERN.test(u));\n\n  let error = null;\n  if (!trimmed.length) error = 'empty';\n  else if (!urls.length) error = 'no_valid_urls';\n  else if (urls.length > MAX_URLS_PER_REQUEST) error = 'too_many';\n\n  return { valid: !error, error, urls, rejected };\n}\n\n// The form has one free-text box: one address per line, or separated by spaces or commas.\nfunction splitUrlText(text) {\n  return String(text || '').split(/[\\s,]+/).filter(Boolean);\n}\n\n// ===== n8n glue =====\n// Accepts {\"url\": \"...\"} or {\"urls\": [\"...\", \"...\"]}: up to 10 public http(s) URLs.\n// Invalid and duplicate URLs are dropped; the request fails only if none are left.\nconst body = $input.first().json.body || {};\nconst result = checkUrls([].concat(body.urls || [], body.url || []));\nconst messages = {\n  empty: 'Send {\"url\": \"https://...\"} or {\"urls\": [\"https://...\", ...]}',\n  no_valid_urls: 'No valid http(s) URLs in the request',\n  too_many: 'At most 10 URLs per request',\n};\nreturn [{ json: { ...result, error: result.error && messages[result.error], trigger: 'webhook' } }];\n"
       }
     },
     {
@@ -129,7 +129,7 @@
           },
           "conditions": [
             {
-              "id": "3a142b28-b531-4f96-aa17-ee418daa60da",
+              "id": "48b4e139-7cff-4550-a2c1-4dab8844d44a",
               "leftValue": "={{ $json.valid }}",
               "rightValue": true,
               "operator": {
@@ -179,6 +179,121 @@
       }
     },
     {
+      "id": "e2465f99-e178-480d-a2bc-48b30cfcc49f",
+      "name": "Check a page (form)",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        520
+      ],
+      "parameters": {
+        "authentication": "none",
+        "formTitle": "Check a page",
+        "formDescription": "Run a PageSpeed check on one or more public web pages now, instead of waiting for the daily check.\n\nResults appear in Slack (#pagespeed-alerts) and in the PageSpeed Monitor sheet. One page takes about 2 minutes.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Page addresses",
+              "fieldType": "textarea",
+              "placeholder": "https://www.example.com/\nhttps://www.example.com/pricing",
+              "requiredField": true
+            }
+          ]
+        },
+        "responseMode": "onReceived",
+        "options": {
+          "path": "check-a-page",
+          "buttonLabel": "Check now",
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "b2d7e4a1-5c3f-4e8a-9b6d-1f0a7c2e4d58",
+      "notes": "Open http://localhost:5678/form/check-a-page. Local only: n8n listens on 127.0.0.1.",
+      "notesInFlow": true
+    },
+    {
+      "id": "9be2dd32-ccc4-4f13-a33d-e44fe83dca5b",
+      "name": "Check form",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        520
+      ],
+      "parameters": {
+        "jsCode": "// GENERATED from scripts/lib/request.js by scripts/build-workflows.js.\n// Edit those files and run `npm run build:workflows`. Changes made here are overwritten.\n\n// ===== scripts/lib/request.js =====\n// Checks the URLs sent to an on-demand run. The webhook and the \"Check a page\"\n// form both use this, so they accept and reject exactly the same input.\n\nconst MAX_URLS_PER_REQUEST = 10;\nconst URL_PATTERN = /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i;\n\n// requested: the raw strings as sent. Returns the unique valid URLs, the ones\n// that were dropped, and an error code when nothing can be checked.\nfunction checkUrls(requested) {\n  const trimmed = requested.map((u) => String(u).trim()).filter(Boolean);\n  const unique = [...new Set(trimmed)];\n  const urls = unique.filter((u) => URL_PATTERN.test(u));\n  const rejected = unique.filter((u) => !URL_PATTERN.test(u));\n\n  let error = null;\n  if (!trimmed.length) error = 'empty';\n  else if (!urls.length) error = 'no_valid_urls';\n  else if (urls.length > MAX_URLS_PER_REQUEST) error = 'too_many';\n\n  return { valid: !error, error, urls, rejected };\n}\n\n// The form has one free-text box: one address per line, or separated by spaces or commas.\nfunction splitUrlText(text) {\n  return String(text || '').split(/[\\s,]+/).filter(Boolean);\n}\n\n// ===== n8n glue =====\n// Same check as the webhook (\"Check request\"), with messages written for the person filling in the form.\nconst result = checkUrls(splitUrlText($input.first().json[\"Page addresses\"]));\nconst messages = {\n  empty: 'Please enter at least one page address.',\n  no_valid_urls: 'None of those look like web addresses. Each one needs to start with https:// (or http://), for example https://www.example.com/.',\n  too_many: 'That is more than 10 pages. Please send 10 or fewer at a time.',\n};\nconst skipped = result.rejected.length\n  ? `\\n\\nSkipped because they don't look like web addresses: ${result.rejected.join(', ')}`\n  : '';\nreturn [{ json: { ...result, error: result.error && messages[result.error], skipped, trigger: 'form' } }];\n"
+      }
+    },
+    {
+      "id": "6cdd36c2-e642-462a-a78d-40645919569b",
+      "name": "Valid form?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        520
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "61b1d4c3-1075-4607-a3fa-ad9fe7ca283c",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4e59e883-560e-4a71-a470-8fcc13fb6cab",
+      "name": "Form: check started",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        620,
+        500
+      ],
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "Check started",
+        "completionMessage": "={{ 'Checking ' + $json.urls.length + ($json.urls.length === 1 ? ' page' : ' pages') + ' now: ' + $json.urls.join(', ') + '.\\n\\n' + 'This takes about 2 minutes for one page, and a little longer for each extra page. You can close this tab.\\n\\n' + 'Every page gets a row in the history tab of the PageSpeed Monitor sheet. A Slack message in #pagespeed-alerts arrives only if a page needs attention or could not be tested. No message means every page passed.' + $json.skipped }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "769f9b0e-0f49-4fe5-a81d-6f8ceb0c0f5e",
+      "name": "Form: not accepted",
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.3,
+      "position": [
+        620,
+        700
+      ],
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "text",
+        "completionTitle": "Nothing was checked",
+        "completionMessage": "={{ $json.error + '\\n\\nGo back and try again.' }}",
+        "options": {}
+      }
+    },
+    {
       "id": "f148f5ca-ad61-4449-aafe-3dddee526e71",
       "name": "URLs to check",
       "type": "n8n-nodes-base.code",
@@ -188,7 +303,7 @@
         100
       ],
       "parameters": {
-        "jsCode": "// Pages checked by the daily schedule. Edit this list to monitor different pages.\nconst DAILY_URLS = [\n  \"https://www.wikipedia.org/\",\n  \"https://developer.mozilla.org/en-US/\",\n  \"https://www.gov.uk/\",\n  \"https://web.dev/\",\n  \"https://www.bbc.com/news\",\n  \"https://www.theverge.com/\",\n  \"https://edition.cnn.com/\"\n];\n\n// Webhook runs arrive with a checked list of URLs; scheduled runs use DAILY_URLS.\nconst first = $input.first().json;\nconst fromWebhook = Array.isArray(first.urls);\nconst urls = fromWebhook ? first.urls : DAILY_URLS;\n\nreturn urls.map((url) => ({ json: { url, trigger: fromWebhook ? 'webhook' : 'schedule' } }));\n"
+        "jsCode": "// Pages checked by the daily schedule. Edit this list to monitor different pages.\nconst DAILY_URLS = [\n  \"https://www.wikipedia.org/\",\n  \"https://developer.mozilla.org/en-US/\",\n  \"https://www.gov.uk/\",\n  \"https://web.dev/\",\n  \"https://www.bbc.com/news\",\n  \"https://www.theverge.com/\",\n  \"https://edition.cnn.com/\"\n];\n\n// Webhook and form runs arrive with a checked list of URLs; scheduled runs use DAILY_URLS.\nconst first = $input.first().json;\nconst onDemand = Array.isArray(first.urls);\nconst urls = onDemand ? first.urls : DAILY_URLS;\nconst trigger = onDemand ? first.trigger : 'schedule';\n\nreturn urls.map((url) => ({ json: { url, trigger } }));\n"
       }
     },
     {
@@ -607,6 +722,57 @@
       ]
     },
     "Accepted (202)": {
+      "main": [
+        [
+          {
+            "node": "URLs to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check a page (form)": {
+      "main": [
+        [
+          {
+            "node": "Check form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check form": {
+      "main": [
+        [
+          {
+            "node": "Valid form?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid form?": {
+      "main": [
+        [
+          {
+            "node": "Form: check started",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Form: not accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Form: check started": {
       "main": [
         [
           {

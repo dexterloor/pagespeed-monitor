@@ -15,6 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const config = require('./lib/config');
+const { MAX_URLS_PER_REQUEST } = require('./lib/request');
 
 const ROOT = path.join(__dirname, '..');
 const LIB = path.join(__dirname, 'lib');
@@ -27,8 +28,10 @@ const IDS = {
   credHook: 'pagespeedHook001',
 };
 const WEBHOOK_ID = '6f3c2a5e-8d41-4b7a-9c0e-2d5f7a1b3c90';
+const FORM_WEBHOOK_ID = 'b2d7e4a1-5c3f-4e8a-9b6d-1f0a7c2e4d58';
+const FORM_PATH = 'check-a-page';
+const FORM_FIELD = 'Page addresses';
 const PSI_ENDPOINT = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
-const MAX_URLS_PER_REQUEST = 10;
 
 // ---------------------------------------------------------------------------
 // Library code for Code nodes
@@ -68,30 +71,44 @@ function generatedCode(files, glue) {
 
 const defaultUrls = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'urls.json'), 'utf8')).urls;
 
-const CODE_CHECK_REQUEST = `
+const GLUE_CHECK_REQUEST = `
 // Accepts {"url": "..."} or {"urls": ["...", "..."]}: up to ${MAX_URLS_PER_REQUEST} public http(s) URLs.
+// Invalid and duplicate URLs are dropped; the request fails only if none are left.
 const body = $input.first().json.body || {};
-const requested = [].concat(body.urls || [], body.url || []).map((u) => String(u).trim());
-const urls = [...new Set(requested)].filter((u) => /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i.test(u));
+const result = checkUrls([].concat(body.urls || [], body.url || []));
+const messages = {
+  empty: 'Send {"url": "https://..."} or {"urls": ["https://...", ...]}',
+  no_valid_urls: 'No valid http(s) URLs in the request',
+  too_many: 'At most ${MAX_URLS_PER_REQUEST} URLs per request',
+};
+return [{ json: { ...result, error: result.error && messages[result.error], trigger: 'webhook' } }];
+`;
 
-let error = null;
-if (!requested.length) error = 'Send {"url": "https://..."} or {"urls": ["https://...", ...]}';
-else if (!urls.length) error = 'No valid http(s) URLs in the request';
-else if (urls.length > ${MAX_URLS_PER_REQUEST}) error = 'At most ${MAX_URLS_PER_REQUEST} URLs per request';
-
-return [{ json: { valid: !error, error, urls } }];
+const GLUE_CHECK_FORM = `
+// Same check as the webhook ("Check request"), with messages written for the person filling in the form.
+const result = checkUrls(splitUrlText($input.first().json[${JSON.stringify(FORM_FIELD)}]));
+const messages = {
+  empty: 'Please enter at least one page address.',
+  no_valid_urls: 'None of those look like web addresses. Each one needs to start with https:// (or http://), for example https://www.example.com/.',
+  too_many: 'That is more than ${MAX_URLS_PER_REQUEST} pages. Please send ${MAX_URLS_PER_REQUEST} or fewer at a time.',
+};
+const skipped = result.rejected.length
+  ? \`\\n\\nSkipped because they don't look like web addresses: \${result.rejected.join(', ')}\`
+  : '';
+return [{ json: { ...result, error: result.error && messages[result.error], skipped, trigger: 'form' } }];
 `;
 
 const CODE_URLS = `
 // Pages checked by the daily schedule. Edit this list to monitor different pages.
 const DAILY_URLS = ${JSON.stringify(defaultUrls, null, 2)};
 
-// Webhook runs arrive with a checked list of URLs; scheduled runs use DAILY_URLS.
+// Webhook and form runs arrive with a checked list of URLs; scheduled runs use DAILY_URLS.
 const first = $input.first().json;
-const fromWebhook = Array.isArray(first.urls);
-const urls = fromWebhook ? first.urls : DAILY_URLS;
+const onDemand = Array.isArray(first.urls);
+const urls = onDemand ? first.urls : DAILY_URLS;
+const trigger = onDemand ? first.trigger : 'schedule';
 
-return urls.map((url) => ({ json: { url, trigger: fromWebhook ? 'webhook' : 'schedule' } }));
+return urls.map((url) => ({ json: { url, trigger } }));
 `;
 
 const CODE_REQUESTS = `
@@ -375,6 +392,29 @@ const slackPost = (name, position, bodyExpr) => node(
   { retryOnFail: true, maxTries: 3, waitBetweenTries: 5000 },
 );
 
+const isValid = (name, position) => node(name, 'n8n-nodes-base.if', 2.2, position, {
+  conditions: {
+    options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+    conditions: [{
+      id: uuid(`cond:${name}`),
+      leftValue: '={{ $json.valid }}',
+      rightValue: true,
+      operator: { type: 'boolean', operation: 'true', singleValue: true },
+    }],
+    combinator: 'and',
+  },
+  options: {},
+});
+
+// The page the form shows after "Check now". The run carries on after the "check started" page.
+const formEnding = (name, position, title, messageExpr) => node(name, 'n8n-nodes-base.form', 2.3, position, {
+  operation: 'completion',
+  respondWith: 'text',
+  completionTitle: title,
+  completionMessage: messageExpr,
+  options: {},
+});
+
 const splitOut = (name, position, field) =>
   node(name, 'n8n-nodes-base.splitOut', 1, position, { fieldToSplitOut: field, options: {} });
 
@@ -424,20 +464,8 @@ function mainWorkflow({ noSheets }) {
       webhookId: WEBHOOK_ID,
       credentials: { httpHeaderAuth: { id: IDS.credHook, name: 'PageSpeed webhook token' } },
     }),
-    code('Check request', [200, 200], CODE_CHECK_REQUEST),
-    node('Valid request?', 'n8n-nodes-base.if', 2.2, [400, 200], {
-      conditions: {
-        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-        conditions: [{
-          id: uuid('cond:valid'),
-          leftValue: '={{ $json.valid }}',
-          rightValue: true,
-          operator: { type: 'boolean', operation: 'true', singleValue: true },
-        }],
-        combinator: 'and',
-      },
-      options: {},
-    }),
+    code('Check request', [200, 200], generatedCode(['request.js'], GLUE_CHECK_REQUEST)),
+    isValid('Valid request?', [400, 200]),
     node('Accepted (202)', 'n8n-nodes-base.respondToWebhook', 1.1, [620, 180], {
       respondWith: 'json',
       responseBody: '={{ { "status": "accepted", "execution_id": $execution.id, "urls": $json.urls, "message": "Results go to Google Sheets and Slack when the run finishes." } }}',
@@ -448,6 +476,37 @@ function mainWorkflow({ noSheets }) {
       responseBody: '={{ { "status": "rejected", "error": $json.error } }}',
       options: { responseCode: 400 },
     }),
+    node('Check a page (form)', 'n8n-nodes-base.formTrigger', 2.3, [0, 520], {
+      authentication: 'none',
+      formTitle: 'Check a page',
+      formDescription: [
+        'Run a PageSpeed check on one or more public web pages now, instead of waiting for the daily check.',
+        'Results appear in Slack (#pagespeed-alerts) and in the PageSpeed Monitor sheet. One page takes about 2 minutes.',
+      ].join('\n\n'),
+      formFields: {
+        values: [{
+          fieldLabel: FORM_FIELD,
+          fieldType: 'textarea',
+          placeholder: 'https://www.example.com/\nhttps://www.example.com/pricing',
+          requiredField: true,
+        }],
+      },
+      responseMode: 'onReceived',
+      options: { path: FORM_PATH, buttonLabel: 'Check now', appendAttribution: false },
+    }, {
+      webhookId: FORM_WEBHOOK_ID,
+      notes: `Open http://localhost:5678/form/${FORM_PATH}. Local only: n8n listens on 127.0.0.1.`,
+      notesInFlow: true,
+    }),
+    code('Check form', [200, 520], generatedCode(['request.js'], GLUE_CHECK_FORM)),
+    isValid('Valid form?', [400, 520]),
+    formEnding('Form: check started', [620, 500], 'Check started',
+      "={{ 'Checking ' + $json.urls.length + ($json.urls.length === 1 ? ' page' : ' pages') + ' now: ' + $json.urls.join(', ') + '.\\n\\n' +"
+      + " 'This takes about 2 minutes for one page, and a little longer for each extra page. You can close this tab.\\n\\n' +"
+      + " 'Every page gets a row in the history tab of the PageSpeed Monitor sheet. A Slack message in #pagespeed-alerts arrives only if a page needs attention or could not be tested. No message means every page passed.' + $json.skipped }}"),
+    formEnding('Form: not accepted', [620, 700], 'Nothing was checked',
+      "={{ $json.error + '\\n\\nGo back and try again.' }}"),
+
     code('URLs to check', [840, 100], CODE_URLS),
     code('Make PSI requests', [1060, 100], CODE_REQUESTS),
     psiRequest('PSI run', [1280, 100], '={{ $json.psi_url }}'),
@@ -493,6 +552,11 @@ function mainWorkflow({ noSheets }) {
   link(connections, 'Valid request?', 'Accepted (202)', { output: 0 });
   link(connections, 'Valid request?', 'Bad request (400)', { output: 1 });
   link(connections, 'Accepted (202)', 'URLs to check');
+  link(connections, 'Check a page (form)', 'Check form');
+  link(connections, 'Check form', 'Valid form?');
+  link(connections, 'Valid form?', 'Form: check started', { output: 0 });
+  link(connections, 'Valid form?', 'Form: not accepted', { output: 1 });
+  link(connections, 'Form: check started', 'URLs to check');
   link(connections, 'URLs to check', 'Make PSI requests');
   link(connections, 'Make PSI requests', 'PSI run');
   link(connections, 'PSI run', 'All runs', { output: 0, input: 0 });
@@ -577,4 +641,4 @@ function main(argv) {
 
 if (require.main === module) main(process.argv.slice(2));
 
-module.exports = { build, libSource, generatedCode, GLUE_BUILD_REPORTS, GLUE_FINDINGS, CODE_DIGEST };
+module.exports = { build, libSource, generatedCode, GLUE_BUILD_REPORTS, GLUE_FINDINGS, CODE_DIGEST, FORM_FIELD };

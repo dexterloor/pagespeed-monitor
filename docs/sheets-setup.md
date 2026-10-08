@@ -17,7 +17,7 @@ timestamp,run_id,trigger,url,strategy,performance,best_practices,lcp_ms,fcp_ms,t
 |---|---|
 | `timestamp` | When the report was built (UTC, ISO 8601) |
 | `run_id` | n8n execution ID, which links rows from the same run |
-| `trigger` | `schedule` or `webhook` |
+| `trigger` | `schedule`, `form` (the "Check a page" form) or `webhook` |
 | `strategy` | `mobile` or `desktop` |
 | `performance`, `best_practices` | Lighthouse category scores, 0–1, averaged over 3 runs |
 | `lcp_ms` … `si_ms`, `cls` | Averaged Core Web Vitals and lab metrics |
