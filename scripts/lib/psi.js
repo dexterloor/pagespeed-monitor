@@ -271,6 +271,22 @@ function auditIds(report) {
   return ids;
 }
 
+// n8n's HTTP Request node reports a failed PSI call as `<status> - <body>`, with
+// Google's JSON error body (often JSON-encoded a second time) as the body. Keep
+// only Google's message; anything else is returned unchanged.
+function psiErrorMessage(text) {
+  const raw = String(text);
+  const m = raw.match(/^\d{3} - ([\s\S]+)$/);
+  if (!m) return raw;
+  try {
+    let body = JSON.parse(m[1]);
+    if (typeof body === 'string') body = JSON.parse(body);
+    return (body && body.error && body.error.message) || raw;
+  } catch {
+    return raw;
+  }
+}
+
 module.exports = {
   ROOT_CAUSES,
   savingsMs,
@@ -280,4 +296,5 @@ module.exports = {
   flagReasons,
   buildReport,
   auditIds,
+  psiErrorMessage,
 };

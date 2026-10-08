@@ -134,7 +134,7 @@ $input.all().forEach((item, i) => {
   if (item.json.error || !item.json.lighthouseResult) {
     const e = item.json.error || item.json;
     // Request errors reach this node only after the retry.
-    g.errors.push({ strategy: req.strategy, run: req.run, message: errorText(e), http_status: errorStatus(e), attempts: 2 });
+    g.errors.push({ strategy: req.strategy, run: req.run, message: psiErrorMessage(errorText(e)), http_status: errorStatus(e), attempts: 2 });
   } else {
     try {
       extractRun(item.json); // reject responses missing the fields the report needs
@@ -230,9 +230,15 @@ const pct = (s) => (typeof s === 'number' ? Math.round(s * 100) : '–');
 const order = { high: 0, medium: 1, low: 2 };
 findings.sort((a, b) => (order[a.risk] ?? 3) - (order[b.risk] ?? 3));
 
+const pages = (n) => \`\${n} \${n === 1 ? 'page' : 'pages'}\`;
+const tested = reports.length - failed.length;
+const headline = [
+  tested ? \`\${findings.length} of \${pages(tested)} \${tested === 1 ? 'needs' : 'need'} attention\` : '',
+  failed.length ? \`\${pages(failed.length)} couldn't be tested\` : '',
+].filter(Boolean).join(' · ');
 const blocks = [{
   type: 'header',
-  text: { type: 'plain_text', text: \`%PREFIX%PageSpeed Monitor: \${findings.length} of \${reports.length} pages need attention\` },
+  text: { type: 'plain_text', text: \`%PREFIX%PageSpeed Monitor: \${headline}\` },
 }];
 for (const f of findings) {
   const ai = f.analysis_source === 'claude' ? '' : \` _(\${f.analysis_source} summary)_\`;
@@ -255,9 +261,17 @@ if (failed.length || partial.length) {
   ];
   blocks.push({ type: 'section', text: { type: 'mrkdwn', text: lines.join('\\n').slice(0, 2900) } });
 }
+const tabNames = [
+  findings.length ? 'findings' : '',
+  tested ? 'history' : '',
+  failed.length || partial.length ? 'errors' : '',
+].filter(Boolean);
+const tabs = tabNames.length === 1
+  ? \`\${tabNames[0]} tab\`
+  : \`\${tabNames.slice(0, -1).join(', ')} and \${tabNames.at(-1)} tabs\`;
 blocks.push({
   type: 'context',
-  elements: [{ type: 'mrkdwn', text: \`Run \${$execution.id} · details in the PageSpeed Monitor sheet (findings and history tabs)\` }],
+  elements: [{ type: 'mrkdwn', text: \`Run \${$execution.id} · details in the PageSpeed Monitor sheet (\${tabs})\` }],
 });
 
 return [{ json: { text: blocks[0].text.text, blocks } }];

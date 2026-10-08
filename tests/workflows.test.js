@@ -62,7 +62,7 @@ test('Build reports node produces the same report as scripts/lib/psi.js', async 
     { json: mobile },
     { json: desktop },
     { json: { error: { message: 'Request failed with status code 500', httpCode: '500' } } },
-    { json: { error: 'timeout of 120000ms exceeded' } },
+    { json: { error: { message: `400 - ${JSON.stringify(JSON.stringify({ error: { code: 400, message: 'Lighthouse returned error: FAILED_DOCUMENT_REQUEST.' } }))}`, name: 'AxiosError' } } },
     // PSI answered but without a performance score (e.g. category param dropped)
     { json: { lighthouseResult: { categories: { 'best-practices': { score: 1 } }, audits: {} } } },
   ];
@@ -91,7 +91,7 @@ test('Build reports node produces the same report as scripts/lib/psi.js', async 
   assert.equal(down.status, 'failed');
   assert.equal(down.report, null);
   assert.equal(down.flagged, false);
-  assert.match(down.error_rows[0].error_message, /timeout/);
+  assert.equal(down.error_rows[0].error_message, 'mobile run 1: Lighthouse returned error: FAILED_DOCUMENT_REQUEST.');
 });
 
 test('Findings row node maps AI output, and survives a failed AI step', async () => {
@@ -124,9 +124,27 @@ test('Slack digest: one message, nothing when all pages pass', async () => {
   });
   assert.equal(out.length, 1);
   const { text, blocks } = out[0].json;
-  assert.equal(text, '%PREFIX%PageSpeed Monitor: 2 of 3 pages need attention');
+  assert.equal(text, "%PREFIX%PageSpeed Monitor: 2 of 2 pages need attention · 1 page couldn't be tested");
   assert.match(blocks[1].text.text, /^:red_circle: \*<https:\/\/a\/\|https:\/\/a\/>\*: high risk · mobile 30 · desktop 60 _\(fallback summary\)_/);
   assert.match(blocks[3].text.text, /:x: https:\/\/c\/: no PageSpeed data \(2 failed runs\)/);
+  assert.match(blocks[4].elements[0].text, /\(findings, history and errors tabs\)$/);
+});
+
+test('Slack digest headline when no page could be tested, or none failed', async () => {
+  const jsCode = byName(main, 'Slack digest').parameters.jsCode;
+  const onlyFailed = await runCodeNode(jsCode, { items: [{ json: { status: 'failed', url: 'https://c/', error_rows: [{}] } }] });
+  assert.equal(onlyFailed[0].json.text, "%PREFIX%PageSpeed Monitor: 1 page couldn't be tested");
+  assert.match(onlyFailed[0].json.blocks.at(-1).elements[0].text, /\(errors tab\)$/);
+
+  const noneFailed = await runCodeNode(jsCode, {
+    items: [
+      { json: { risk: 'low', url: 'https://a/', mobile_score: 0.95, desktop_score: 0.99, summary: 'S', analysis_source: 'claude' } },
+      { json: { status: 'ok', url: 'https://a/', error_rows: [] } },
+      { json: { status: 'ok', url: 'https://b/', error_rows: [] } },
+    ],
+  });
+  assert.equal(noneFailed[0].json.text, '%PREFIX%PageSpeed Monitor: 1 of 2 pages need attention');
+  assert.match(noneFailed[0].json.blocks.at(-1).elements[0].text, /\(findings and history tabs\)$/);
 });
 
 test('Make PSI requests builds the full PSI query (n8n would merge repeated params)', async () => {

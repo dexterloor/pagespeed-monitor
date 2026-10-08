@@ -141,7 +141,7 @@ Useful switches when starting n8n: `ANALYZE_FORCE_FALLBACK=1` skips Claude (show
 
 ## Tests
 
-`npm test` runs 48 tests with Node's built-in test runner, with no dependencies to install. They cover:
+`npm test` runs 50 tests with Node's built-in test runner, with no dependencies to install. They cover:
 - averaging, noise filtering, diagnostics, root-cause grouping and flag thresholds
 - output validation (including invented audit ids), and the retry and fallback paths
 - the CLI and the Sheets row mapping

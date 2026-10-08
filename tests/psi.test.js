@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  savingsMs, extractRun, averageRuns, groupFindings, flagReasons, buildReport, auditIds,
+  savingsMs, extractRun, averageRuns, groupFindings, flagReasons, buildReport, auditIds, psiErrorMessage,
 } = require('../scripts/lib/psi');
 const { makePsi, opportunity, insight } = require('./helpers/psi-factory');
 
@@ -193,4 +193,14 @@ test('buildReport groups on the requested URL even when redirects differ between
   const report = buildReport([a, b]);
   assert.equal(report.url, 'https://example.com/');
   assert.equal(report.final_url, 'https://example.com/');
+});
+
+test('psiErrorMessage keeps only Google\'s message from an n8n HTTP error', () => {
+  // Real error text from n8n's HTTP Request node for an unreachable domain.
+  const body = JSON.stringify({ error: { code: 400, message: 'Lighthouse returned error: FAILED_DOCUMENT_REQUEST. (Details: net::ERR_CONNECTION_FAILED)', errors: [] } }, null, 2);
+  const raw = `400 - ${JSON.stringify(body + '\n')}`;
+  assert.equal(psiErrorMessage(raw), 'Lighthouse returned error: FAILED_DOCUMENT_REQUEST. (Details: net::ERR_CONNECTION_FAILED)');
+  assert.equal(psiErrorMessage(`429 - ${JSON.stringify({ error: { message: 'Quota exceeded' } })}`), 'Quota exceeded');
+  assert.equal(psiErrorMessage('timeout of 120000ms exceeded'), 'timeout of 120000ms exceeded');
+  assert.equal(psiErrorMessage('500 - "not json"'), '500 - "not json"');
 });
