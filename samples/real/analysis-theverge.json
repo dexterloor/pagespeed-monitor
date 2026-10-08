@@ -1,0 +1,74 @@
+{
+  "url": "https://www.theverge.com/",
+  "source": "claude",
+  "model": "sonnet",
+  "duration_ms": 13406,
+  "attempts": 1,
+  "analysis": {
+    "summary": "The Verge scores poorly: 27/100 on mobile and 53/100 on desktop. On mobile the main content takes about 20 seconds to appear (LCP, the time until the biggest visible element loads), while desktop shows it in 1.8 seconds. The main culprit on both is heavy JavaScript that locks up the page for 3 to 4 seconds (TBT, time the page can't respond to taps and clicks).",
+    "risk": "high",
+    "root_causes": [
+      {
+        "cause": "Too much JavaScript running on page load",
+        "affects": "both",
+        "audit_ids": [
+          "bootup-time",
+          "mainthread-work-breakdown",
+          "forced-reflow-insight",
+          "legacy-javascript-insight"
+        ],
+        "est_savings_ms": 4400,
+        "fix": "Profile the main-thread work and defer or lazy-load non-essential scripts (ads, tracking, widgets) until after the page is interactive. Break up long tasks, avoid layout-forcing code, and stop shipping transpiled legacy code to modern browsers.",
+        "effort": "large"
+      },
+      {
+        "cause": "Large amount of unused JavaScript downloaded",
+        "affects": "mobile",
+        "audit_ids": [
+          "unused-javascript",
+          "unminified-javascript",
+          "valid-source-maps"
+        ],
+        "est_savings_ms": 4560,
+        "fix": "Use code splitting so each page only loads the JavaScript it needs, and remove unused libraries. Confirm all scripts are minified and publish source maps to make bundle analysis easier.",
+        "effort": "medium"
+      },
+      {
+        "cause": "Weak browser caching of static files",
+        "affects": "mobile",
+        "audit_ids": [
+          "cache-insight",
+          "total-byte-weight"
+        ],
+        "est_savings_ms": 2650,
+        "fix": "Serve static assets (JS, CSS, fonts, images) with long cache lifetimes and versioned filenames so repeat visits don't re-download them.",
+        "effort": "small"
+      },
+      {
+        "cause": "Render-blocking CSS and scripts delay first paint",
+        "affects": "both",
+        "audit_ids": [
+          "render-blocking-insight",
+          "unused-css-rules",
+          "font-display-insight"
+        ],
+        "est_savings_ms": 2550,
+        "fix": "Inline critical CSS, load the remaining stylesheets without blocking, and add defer or async to scripts in the head. Remove unused CSS rules.",
+        "effort": "medium"
+      },
+      {
+        "cause": "Main image is discovered late, slowing LCP",
+        "affects": "both",
+        "audit_ids": [
+          "lcp-discovery-insight",
+          "image-delivery-insight",
+          "network-dependency-tree-insight"
+        ],
+        "est_savings_ms": 0,
+        "fix": "Make sure the main image is not lazy-loaded, add fetchpriority=\"high\" or a preload for it, and serve it in a smaller modern format sized for the screen. This matters most on mobile, where LCP is about 20 seconds.",
+        "effort": "small"
+      }
+    ],
+    "quick_win": "Add fetchpriority=\"high\" (and remove lazy-loading) on the main hero image, and set long cache lifetimes on static files, to cut the 20-second mobile LCP."
+  }
+}

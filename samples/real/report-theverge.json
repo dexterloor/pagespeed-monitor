@@ -1,0 +1,355 @@
+{
+  "url": "https://www.theverge.com/",
+  "generated_at": "2026-10-08T05:35:17.832Z",
+  "lighthouse_version": "13.5.0",
+  "thresholds": {
+    "score": 0.9,
+    "savings_ms": 100
+  },
+  "flagged": true,
+  "flag_reasons": [
+    "mobile: performance 0.27 < 0.9",
+    "mobile: 6 opportunities saving >= 100ms (top: unused-javascript 4560ms)",
+    "desktop: performance 0.53 < 0.9",
+    "desktop: 4 opportunities saving >= 100ms (top: bootup-time 3300ms)"
+  ],
+  "strategies": {
+    "mobile": {
+      "runs": 1,
+      "performance": 0.27,
+      "performance_range": [
+        0.27,
+        0.27
+      ],
+      "best_practices": 0.73,
+      "metrics": {
+        "lcp_ms": 20318,
+        "fcp_ms": 4762,
+        "tbt_ms": 3656,
+        "cls": 0.021,
+        "si_ms": 13719
+      },
+      "opportunities": [
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "savings_ms": 4560,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "bootup-time",
+          "title": "Reduce JavaScript execution time",
+          "savings_ms": 4400,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimize main-thread work",
+          "savings_ms": 3650,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "cache-insight",
+          "title": "Use efficient cache lifetimes",
+          "savings_ms": 2650,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "render-blocking-insight",
+          "title": "Render-blocking requests",
+          "savings_ms": 2550,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "legacy-javascript-insight",
+          "title": "Legacy JavaScript",
+          "savings_ms": 200,
+          "seen_in_runs": 1
+        }
+      ],
+      "diagnostics": [
+        {
+          "id": "errors-in-console",
+          "title": "Browser errors were logged to the console",
+          "score": 0
+        },
+        {
+          "id": "forced-reflow-insight",
+          "title": "Forced reflow",
+          "score": 0
+        },
+        {
+          "id": "inspector-issues",
+          "title": "Issues were logged in the `Issues` panel in Chrome Devtools",
+          "score": 0
+        },
+        {
+          "id": "lcp-discovery-insight",
+          "title": "LCP request discovery",
+          "score": 0
+        },
+        {
+          "id": "network-dependency-tree-insight",
+          "title": "Network dependency tree",
+          "score": 0
+        },
+        {
+          "id": "third-party-cookies",
+          "title": "Uses third-party cookies",
+          "score": 0
+        },
+        {
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0
+        },
+        {
+          "id": "image-delivery-insight",
+          "title": "Improve image delivery",
+          "score": 0.5
+        },
+        {
+          "id": "total-byte-weight",
+          "title": "Avoid enormous network payloads",
+          "score": 0.5
+        },
+        {
+          "id": "unminified-javascript",
+          "title": "Minify JavaScript",
+          "score": 0.5
+        },
+        {
+          "id": "unused-css-rules",
+          "title": "Reduce unused CSS",
+          "score": 0.5
+        }
+      ],
+      "root_causes": [
+        {
+          "cause": "javascript",
+          "label": "JavaScript",
+          "max_savings_ms": 4560,
+          "audits": [
+            {
+              "id": "unused-javascript",
+              "title": "Reduce unused JavaScript",
+              "savings_ms": 4560
+            },
+            {
+              "id": "bootup-time",
+              "title": "Reduce JavaScript execution time",
+              "savings_ms": 4400
+            },
+            {
+              "id": "mainthread-work-breakdown",
+              "title": "Minimize main-thread work",
+              "savings_ms": 3650
+            },
+            {
+              "id": "legacy-javascript-insight",
+              "title": "Legacy JavaScript",
+              "savings_ms": 200
+            }
+          ]
+        },
+        {
+          "cause": "server",
+          "label": "Server, caching and network",
+          "max_savings_ms": 2650,
+          "audits": [
+            {
+              "id": "cache-insight",
+              "title": "Use efficient cache lifetimes",
+              "savings_ms": 2650
+            }
+          ]
+        },
+        {
+          "cause": "render_blocking",
+          "label": "Render-blocking CSS and requests",
+          "max_savings_ms": 2550,
+          "audits": [
+            {
+              "id": "render-blocking-insight",
+              "title": "Render-blocking requests",
+              "savings_ms": 2550
+            }
+          ]
+        }
+      ],
+      "flag_reasons": [
+        "performance 0.27 < 0.9",
+        "6 opportunities saving >= 100ms (top: unused-javascript 4560ms)"
+      ],
+      "flagged": true
+    },
+    "desktop": {
+      "runs": 1,
+      "performance": 0.53,
+      "performance_range": [
+        0.53,
+        0.53
+      ],
+      "best_practices": 0.73,
+      "metrics": {
+        "lcp_ms": 1821,
+        "fcp_ms": 943,
+        "tbt_ms": 2952,
+        "cls": 0,
+        "si_ms": 3196
+      },
+      "opportunities": [
+        {
+          "id": "bootup-time",
+          "title": "Reduce JavaScript execution time",
+          "savings_ms": 3300,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "mainthread-work-breakdown",
+          "title": "Minimize main-thread work",
+          "savings_ms": 2950,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "render-blocking-insight",
+          "title": "Render-blocking requests",
+          "savings_ms": 850,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "savings_ms": 200,
+          "seen_in_runs": 1
+        },
+        {
+          "id": "font-display-insight",
+          "title": "Font display",
+          "savings_ms": 50,
+          "seen_in_runs": 1
+        }
+      ],
+      "diagnostics": [
+        {
+          "id": "errors-in-console",
+          "title": "Browser errors were logged to the console",
+          "score": 0
+        },
+        {
+          "id": "forced-reflow-insight",
+          "title": "Forced reflow",
+          "score": 0
+        },
+        {
+          "id": "inspector-issues",
+          "title": "Issues were logged in the `Issues` panel in Chrome Devtools",
+          "score": 0
+        },
+        {
+          "id": "lcp-discovery-insight",
+          "title": "LCP request discovery",
+          "score": 0
+        },
+        {
+          "id": "network-dependency-tree-insight",
+          "title": "Network dependency tree",
+          "score": 0
+        },
+        {
+          "id": "third-party-cookies",
+          "title": "Uses third-party cookies",
+          "score": 0
+        },
+        {
+          "id": "valid-source-maps",
+          "title": "Missing source maps for large first-party JavaScript",
+          "score": 0
+        },
+        {
+          "id": "cache-insight",
+          "title": "Use efficient cache lifetimes",
+          "score": 0.5
+        },
+        {
+          "id": "image-delivery-insight",
+          "title": "Improve image delivery",
+          "score": 0.5
+        },
+        {
+          "id": "legacy-javascript-insight",
+          "title": "Legacy JavaScript",
+          "score": 0.5
+        },
+        {
+          "id": "total-byte-weight",
+          "title": "Avoid enormous network payloads",
+          "score": 0.5
+        },
+        {
+          "id": "unminified-javascript",
+          "title": "Minify JavaScript",
+          "score": 0.5
+        },
+        {
+          "id": "unused-css-rules",
+          "title": "Reduce unused CSS",
+          "score": 0.5
+        }
+      ],
+      "root_causes": [
+        {
+          "cause": "javascript",
+          "label": "JavaScript",
+          "max_savings_ms": 3300,
+          "audits": [
+            {
+              "id": "bootup-time",
+              "title": "Reduce JavaScript execution time",
+              "savings_ms": 3300
+            },
+            {
+              "id": "mainthread-work-breakdown",
+              "title": "Minimize main-thread work",
+              "savings_ms": 2950
+            },
+            {
+              "id": "unused-javascript",
+              "title": "Reduce unused JavaScript",
+              "savings_ms": 200
+            }
+          ]
+        },
+        {
+          "cause": "render_blocking",
+          "label": "Render-blocking CSS and requests",
+          "max_savings_ms": 850,
+          "audits": [
+            {
+              "id": "render-blocking-insight",
+              "title": "Render-blocking requests",
+              "savings_ms": 850
+            }
+          ]
+        },
+        {
+          "cause": "fonts",
+          "label": "Web fonts",
+          "max_savings_ms": 50,
+          "audits": [
+            {
+              "id": "font-display-insight",
+              "title": "Font display",
+              "savings_ms": 50
+            }
+          ]
+        }
+      ],
+      "flag_reasons": [
+        "performance 0.53 < 0.9",
+        "4 opportunities saving >= 100ms (top: bootup-time 3300ms)"
+      ],
+      "flagged": true
+    }
+  }
+}

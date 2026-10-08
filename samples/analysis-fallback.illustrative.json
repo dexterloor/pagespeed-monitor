@@ -1,0 +1,45 @@
+{
+  "url": "https://www.example.com/",
+  "source": "fallback",
+  "model": null,
+  "duration_ms": 0,
+  "fallback_reason": "ANALYZE_FORCE_FALLBACK=1",
+  "attempts": 0,
+  "analysis": {
+    "summary": "This page scored 50 on mobile and 87 on desktop out of 100 (target: 90). The biggest issue is images (up to about 1350 ms). This summary was generated automatically because the AI analysis was unavailable.",
+    "risk": "high",
+    "root_causes": [
+      {
+        "cause": "Images",
+        "affects": "mobile",
+        "audit_ids": [
+          "image-delivery-insight"
+        ],
+        "est_savings_ms": 1350,
+        "fix": "Serve images in WebP/AVIF at the size they are displayed, lazy-load images below the fold, and set width/height.",
+        "effort": "medium"
+      },
+      {
+        "cause": "JavaScript",
+        "affects": "both",
+        "audit_ids": [
+          "unused-javascript"
+        ],
+        "est_savings_ms": 780,
+        "fix": "Remove or defer unused JavaScript, split large bundles, and stop shipping legacy polyfills to modern browsers.",
+        "effort": "medium"
+      },
+      {
+        "cause": "Render-blocking CSS and requests",
+        "affects": "mobile",
+        "audit_ids": [
+          "render-blocking-insight"
+        ],
+        "est_savings_ms": 420,
+        "fix": "Inline critical CSS, defer the rest, and load non-critical scripts with defer or async.",
+        "effort": "medium"
+      }
+    ],
+    "quick_win": "Serve images in WebP/AVIF at the size they are displayed, lazy-load images below the fold, and set width/height."
+  }
+}

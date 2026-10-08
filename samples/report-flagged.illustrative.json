@@ -1,0 +1,176 @@
+{
+  "url": "https://www.example.com/",
+  "generated_at": "2026-10-08T04:08:25.035Z",
+  "lighthouse_version": "12.8.2",
+  "thresholds": {
+    "score": 0.9,
+    "savings_ms": 100
+  },
+  "flagged": true,
+  "flag_reasons": [
+    "mobile: performance 0.5 < 0.9",
+    "mobile: 4 opportunities saving >= 100ms (top: image-delivery-insight 1350ms)",
+    "desktop: performance 0.87 < 0.9",
+    "desktop: 1 opportunity saving >= 100ms (top: unused-javascript 210ms)"
+  ],
+  "strategies": {
+    "mobile": {
+      "runs": 3,
+      "performance": 0.5,
+      "performance_range": [
+        0.48,
+        0.52
+      ],
+      "best_practices": 1,
+      "metrics": {
+        "lcp_ms": 4800,
+        "fcp_ms": 1000,
+        "tbt_ms": 620,
+        "cls": 0.01,
+        "si_ms": 1500
+      },
+      "opportunities": [
+        {
+          "id": "image-delivery-insight",
+          "title": "Improve image delivery",
+          "savings_ms": 1350,
+          "seen_in_runs": 3
+        },
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "savings_ms": 780,
+          "seen_in_runs": 3
+        },
+        {
+          "id": "render-blocking-insight",
+          "title": "Render blocking requests",
+          "savings_ms": 420,
+          "seen_in_runs": 3
+        },
+        {
+          "id": "third-parties-insight",
+          "title": "3rd parties",
+          "savings_ms": 240,
+          "seen_in_runs": 3
+        },
+        {
+          "id": "font-display-insight",
+          "title": "Font display",
+          "savings_ms": 60,
+          "seen_in_runs": 3
+        }
+      ],
+      "root_causes": [
+        {
+          "cause": "images",
+          "label": "Images",
+          "max_savings_ms": 1350,
+          "audits": [
+            {
+              "id": "image-delivery-insight",
+              "title": "Improve image delivery",
+              "savings_ms": 1350
+            }
+          ]
+        },
+        {
+          "cause": "javascript",
+          "label": "JavaScript",
+          "max_savings_ms": 780,
+          "audits": [
+            {
+              "id": "unused-javascript",
+              "title": "Reduce unused JavaScript",
+              "savings_ms": 780
+            }
+          ]
+        },
+        {
+          "cause": "render_blocking",
+          "label": "Render-blocking CSS and requests",
+          "max_savings_ms": 420,
+          "audits": [
+            {
+              "id": "render-blocking-insight",
+              "title": "Render blocking requests",
+              "savings_ms": 420
+            }
+          ]
+        },
+        {
+          "cause": "third_party",
+          "label": "Third-party scripts",
+          "max_savings_ms": 240,
+          "audits": [
+            {
+              "id": "third-parties-insight",
+              "title": "3rd parties",
+              "savings_ms": 240
+            }
+          ]
+        },
+        {
+          "cause": "fonts",
+          "label": "Web fonts",
+          "max_savings_ms": 60,
+          "audits": [
+            {
+              "id": "font-display-insight",
+              "title": "Font display",
+              "savings_ms": 60
+            }
+          ]
+        }
+      ],
+      "flag_reasons": [
+        "performance 0.5 < 0.9",
+        "4 opportunities saving >= 100ms (top: image-delivery-insight 1350ms)"
+      ],
+      "flagged": true
+    },
+    "desktop": {
+      "runs": 3,
+      "performance": 0.87,
+      "performance_range": [
+        0.86,
+        0.88
+      ],
+      "best_practices": 1,
+      "metrics": {
+        "lcp_ms": 2000,
+        "fcp_ms": 1000,
+        "tbt_ms": 100,
+        "cls": 0.01,
+        "si_ms": 1500
+      },
+      "opportunities": [
+        {
+          "id": "unused-javascript",
+          "title": "Reduce unused JavaScript",
+          "savings_ms": 210,
+          "seen_in_runs": 3
+        }
+      ],
+      "root_causes": [
+        {
+          "cause": "javascript",
+          "label": "JavaScript",
+          "max_savings_ms": 210,
+          "audits": [
+            {
+              "id": "unused-javascript",
+              "title": "Reduce unused JavaScript",
+              "savings_ms": 210
+            }
+          ]
+        }
+      ],
+      "flag_reasons": [
+        "performance 0.87 < 0.9",
+        "1 opportunity saving >= 100ms (top: unused-javascript 210ms)"
+      ],
+      "flagged": true
+    }
+  }
+}

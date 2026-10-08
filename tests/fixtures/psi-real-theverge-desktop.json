@@ -1,0 +1,497 @@
+{
+ "id": "https://www.theverge.com/",
+ "analysisUTCTimestamp": "2026-10-08T05:26:15.575Z",
+ "lighthouseResult": {
+  "requestedUrl": "https://www.theverge.com/",
+  "finalUrl": "https://www.theverge.com/",
+  "lighthouseVersion": "13.5.0",
+  "fetchTime": "2026-10-08T05:26:15.575Z",
+  "configSettings": {
+   "formFactor": "desktop"
+  },
+  "categories": {
+   "performance": {
+    "id": "performance",
+    "score": 0.53
+   },
+   "best-practices": {
+    "id": "best-practices",
+    "score": 0.73
+   }
+  },
+  "audits": {
+   "redirects-http": {
+    "title": "Redirects HTTP traffic to HTTPS",
+    "score": null,
+    "scoreDisplayMode": "notApplicable"
+   },
+   "largest-contentful-paint": {
+    "title": "Largest Contentful Paint",
+    "score": 0.69,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 1821.0474482370785
+   },
+   "third-party-cookies": {
+    "title": "Uses third-party cookies",
+    "score": 0,
+    "scoreDisplayMode": "binary"
+   },
+   "network-dependency-tree-insight": {
+    "title": "Network dependency tree",
+    "score": 0,
+    "scoreDisplayMode": "numeric",
+    "metricSavings": {
+     "LCP": 0
+    }
+   },
+   "max-potential-fid": {
+    "title": "Max Potential First Input Delay",
+    "score": 0.03,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 630
+   },
+   "unused-javascript": {
+    "title": "Reduce unused JavaScript",
+    "score": 0,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 200,
+    "metricSavings": {
+     "LCP": 200,
+     "FCP": 100
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 200
+    }
+   },
+   "lcp-discovery-insight": {
+    "title": "LCP request discovery",
+    "score": 0,
+    "scoreDisplayMode": "numeric",
+    "metricSavings": {
+     "LCP": 0
+    }
+   },
+   "js-libraries": {
+    "title": "Detected JavaScript libraries",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "render-blocking-insight": {
+    "title": "Render-blocking requests",
+    "score": 0,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 850
+    }
+   },
+   "geolocation-on-start": {
+    "title": "Avoids requesting the geolocation permission on page load",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "has-hsts": {
+    "title": "Use a strong HSTS policy",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "main-thread-tasks": {
+    "title": "Tasks",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "redirects": {
+    "title": "Avoid multiple page redirects",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 0,
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 0
+    }
+   },
+   "metrics": {
+    "title": "Metrics",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "numericValue": 15243
+   },
+   "user-timings": {
+    "title": "User Timing marks and measures",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "dom-size-insight": {
+    "title": "Optimize DOM size",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "numericValue": 5330,
+    "metricSavings": {
+     "INP": 0
+    }
+   },
+   "unused-css-rules": {
+    "title": "Reduce unused CSS",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 0,
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 0
+    }
+   },
+   "inp-breakdown-insight": {
+    "title": "INP breakdown",
+    "score": null,
+    "scoreDisplayMode": "notApplicable"
+   },
+   "valid-source-maps": {
+    "title": "Missing source maps for large first-party JavaScript",
+    "score": 0,
+    "scoreDisplayMode": "binary"
+   },
+   "first-contentful-paint": {
+    "title": "First Contentful Paint",
+    "score": 0.89,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 943.0130084261688
+   },
+   "forced-reflow-insight": {
+    "title": "Forced reflow",
+    "score": 0,
+    "scoreDisplayMode": "numeric"
+   },
+   "document-latency-insight": {
+    "title": "Document request latency",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    }
+   },
+   "bootup-time": {
+    "title": "Reduce JavaScript execution time",
+    "score": 0,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 8964.84799999995,
+    "metricSavings": {
+     "TBT": 3300
+    }
+   },
+   "total-byte-weight": {
+    "title": "Avoid enormous network payloads",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 7819372
+   },
+   "server-response-time": {
+    "title": "Initial server response time was short",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 57,
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 0
+    }
+   },
+   "clickjacking-mitigation": {
+    "title": "Mitigate clickjacking with XFO or CSP",
+    "score": null,
+    "scoreDisplayMode": "notApplicable"
+   },
+   "duplicated-javascript-insight": {
+    "title": "Duplicated JavaScript",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    }
+   },
+   "csp-xss": {
+    "title": "Ensure CSP is effective against XSS attacks",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "trusted-types-xss": {
+    "title": "Mitigate DOM-based XSS with Trusted Types",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "total-blocking-time": {
+    "title": "Total Blocking Time",
+    "score": 0,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 2951.7968054086327
+   },
+   "resource-summary": {
+    "title": "Resources Summary",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "font-display-insight": {
+    "title": "Font display",
+    "score": 0,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "FCP": 50,
+     "INP": 0
+    }
+   },
+   "diagnostics": {
+    "title": "Diagnostics",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "is-on-https": {
+    "title": "Uses HTTPS",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "inspector-issues": {
+    "title": "Issues were logged in the `Issues` panel in Chrome Devtools",
+    "score": 0,
+    "scoreDisplayMode": "binary"
+   },
+   "script-treemap-data": {
+    "title": "Script Treemap Data",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "network-rtt": {
+    "title": "Network Round Trip Times",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "numericValue": 132.18336
+   },
+   "layout-shifts": {
+    "title": "Avoid large layout shifts",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "metricSavings": {
+     "CLS": 0
+    }
+   },
+   "lcp-breakdown-insight": {
+    "title": "LCP breakdown",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "metricSavings": {
+     "LCP": 0
+    }
+   },
+   "non-composited-animations": {
+    "title": "Avoid non-composited animations",
+    "score": null,
+    "scoreDisplayMode": "notApplicable",
+    "metricSavings": {
+     "CLS": 0
+    }
+   },
+   "origin-isolation": {
+    "title": "Ensure proper origin isolation with COOP",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "image-delivery-insight": {
+    "title": "Improve image delivery",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    }
+   },
+   "network-requests": {
+    "title": "Network Requests",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "network-server-latency": {
+    "title": "Server Backend Latencies",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "numericValue": 335
+   },
+   "final-screenshot": {
+    "title": "Final Screenshot",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "unminified-javascript": {
+    "title": "Minify JavaScript",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 0,
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 0
+    }
+   },
+   "cumulative-layout-shift": {
+    "title": "Cumulative Layout Shift",
+    "score": 1,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 0.0002121857599110364
+   },
+   "doctype": {
+    "title": "Page has the HTML doctype",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "errors-in-console": {
+    "title": "Browser errors were logged to the console",
+    "score": 0,
+    "scoreDisplayMode": "binary"
+   },
+   "notification-on-start": {
+    "title": "Avoids requesting the notification permission on page load",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "image-aspect-ratio": {
+    "title": "Displays images with correct aspect ratio",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "image-size-responsive": {
+    "title": "Serves images with appropriate resolution",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "charset": {
+    "title": "Properly defines charset",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "speed-index": {
+    "title": "Speed Index",
+    "score": 0.22,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 3196.413109468604
+   },
+   "legacy-javascript-insight": {
+    "title": "Legacy JavaScript",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    }
+   },
+   "cache-insight": {
+    "title": "Use efficient cache lifetimes",
+    "score": 0.5,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    }
+   },
+   "paste-preventing-inputs": {
+    "title": "Allows users to paste into input fields",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "unminified-css": {
+    "title": "Minify CSS",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 0,
+    "metricSavings": {
+     "LCP": 0,
+     "FCP": 0
+    },
+    "details": {
+     "type": "opportunity",
+     "overallSavingsMs": 0
+    }
+   },
+   "baseline": {
+    "title": "Baseline Features",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "long-tasks": {
+    "title": "Avoid long main-thread tasks",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "metricSavings": {
+     "TBT": 2950
+    }
+   },
+   "mainthread-work-breakdown": {
+    "title": "Minimize main-thread work",
+    "score": 0,
+    "scoreDisplayMode": "metricSavings",
+    "numericValue": 14795.735000000775,
+    "metricSavings": {
+     "TBT": 2950
+    }
+   },
+   "cls-culprits-insight": {
+    "title": "Layout shift culprits",
+    "score": 1,
+    "scoreDisplayMode": "informative",
+    "metricSavings": {
+     "CLS": 0
+    }
+   },
+   "interactive": {
+    "title": "Time to Interactive",
+    "score": 0,
+    "scoreDisplayMode": "numeric",
+    "numericValue": 15243.174000617779
+   },
+   "screenshot-thumbnails": {
+    "title": "Screenshot Thumbnails",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "third-parties-insight": {
+    "title": "3rd parties",
+    "score": 1,
+    "scoreDisplayMode": "informative"
+   },
+   "deprecations": {
+    "title": "Avoids deprecated APIs",
+    "score": 1,
+    "scoreDisplayMode": "binary"
+   },
+   "unsized-images": {
+    "title": "Image elements have explicit `width` and `height`",
+    "score": 1,
+    "scoreDisplayMode": "metricSavings",
+    "metricSavings": {
+     "CLS": 0
+    }
+   },
+   "viewport-insight": {
+    "title": "Optimize viewport for mobile",
+    "score": 1,
+    "scoreDisplayMode": "numeric",
+    "metricSavings": {
+     "INP": 0
+    }
+   }
+  }
+ }
+}

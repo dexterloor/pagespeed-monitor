@@ -1,0 +1,166 @@
+{
+  "id": "pagespeedErr0001",
+  "name": "PageSpeed Monitor: errors",
+  "nodes": [
+    {
+      "id": "8b22146a-8b2b-42f1-ad37-3076ed1a8ee9",
+      "name": "Note: errors",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -260
+      ],
+      "parameters": {
+        "content": "## PageSpeed Monitor: error handler\nRuns when the main workflow fails outright (not for a single failed PageSpeed request, which the main workflow retries and logs itself). Posts to Slack and writes an **errors** row.",
+        "width": 520,
+        "height": 180,
+        "color": 3
+      }
+    },
+    {
+      "id": "3c012733-c592-434c-a16d-fe314c72d841",
+      "name": "On workflow error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "ea40a0c3-f776-4080-a5cb-bae281d50780",
+      "name": "Format error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Turns an n8n error event into a Slack message and an errors-tab row.\nconst { execution = {}, workflow = {} } = $input.first().json;\nconst err = execution.error || {};\nconst node = (err.node && err.node.name) || execution.lastNodeExecuted || 'unknown';\nconst message = String(err.message || err.description || 'Unknown error').slice(0, 500);\n\nreturn [{\n  json: {\n    slack: {\n      text: `%PREFIX%PageSpeed Monitor failed at \"${node}\"`,\n      blocks: [{\n        type: 'section',\n        text: {\n          type: 'mrkdwn',\n          text: `:rotating_light: %PREFIX%*${workflow.name || 'Workflow'}* failed at *${node}*\\n${message}\\nExecution ${execution.id || '?'} (${execution.mode || 'unknown'} run)`,\n        },\n      }],\n    },\n    row: {\n      timestamp: new Date().toISOString(),\n      run_id: execution.id || '',\n      workflow: workflow.name || '',\n      node,\n      url: '',\n      error_message: message,\n      http_status: (err.httpCode || err.status || '') + '',\n      attempts: 1,\n    },\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "fe9f3787-5f6c-4f06-a86e-d408805e8289",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        -100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slack).replaceAll('%PREFIX%', $env.SLACK_PREFIX || '') }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "a31cc072-7147-47dc-acf3-38d222c7cfa0",
+      "name": "Error row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        440,
+        100
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.row) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "ce05d29d-5085-447e-a6f3-b578f66665a9",
+      "name": "Append errors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "errors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pagespeedSheets1",
+          "name": "Google Sheets (PageSpeed Monitor)"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On workflow error": {
+      "main": [
+        [
+          {
+            "node": "Format error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format error": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error row": {
+      "main": [
+        [
+          {
+            "node": "Append errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "active": false,
+  "tags": []
+}

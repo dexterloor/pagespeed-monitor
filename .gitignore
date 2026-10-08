@@ -1,0 +1,17 @@
+# Private session notes (job-application context)
+HANDOFF.md
+CLAUDE.md
+
+# Secrets
+.env
+*.env.local
+
+# Local n8n data
+.n8n/
+
+node_modules/
+__pycache__/
+.DS_Store
+
+# n8n runtime cache (created because N8N_USER_FOLDER is the repo)
+.cache/

@@ -1,0 +1,14 @@
+{
+  "name": "pagespeed-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "n8n workflow that monitors PageSpeed Insights for public URLs, summarises regressions with Claude, logs to Google Sheets and alerts Slack.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "build:workflows": "node scripts/build-workflows.js"
+  }
+}

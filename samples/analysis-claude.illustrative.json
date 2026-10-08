@@ -1,0 +1,64 @@
+{
+  "url": "https://www.example.com/",
+  "source": "claude",
+  "model": "sonnet",
+  "duration_ms": 7384,
+  "attempts": 1,
+  "analysis": {
+    "summary": "On mobile the page scores 0.5 out of 1, which is poor, mainly because the main content takes about 4.8 seconds to appear (LCP, the time until the largest visible element loads). Desktop is close to passing at 0.87, with main content at 2.0 seconds. The biggest drags are image delivery and JavaScript that is downloaded but not used.",
+    "risk": "high",
+    "root_causes": [
+      {
+        "cause": "Images not delivered efficiently",
+        "affects": "mobile",
+        "audit_ids": [
+          "image-delivery-insight"
+        ],
+        "est_savings_ms": 1350,
+        "fix": "Serve images in modern formats (WebP/AVIF) at the size they are displayed, with stronger compression and responsive srcset. Make sure the main above-the-fold image is not lazy-loaded.",
+        "effort": "small"
+      },
+      {
+        "cause": "Unused JavaScript downloaded",
+        "affects": "both",
+        "audit_ids": [
+          "unused-javascript"
+        ],
+        "est_savings_ms": 780,
+        "fix": "Split bundles and load only the code each page needs, deferring the rest. Remove libraries that are not used.",
+        "effort": "medium"
+      },
+      {
+        "cause": "Render-blocking CSS and requests",
+        "affects": "mobile",
+        "audit_ids": [
+          "render-blocking-insight"
+        ],
+        "est_savings_ms": 420,
+        "fix": "Inline critical CSS and load other stylesheets and scripts with defer, async or media attributes so they do not delay first paint.",
+        "effort": "medium"
+      },
+      {
+        "cause": "Third-party scripts",
+        "affects": "mobile",
+        "audit_ids": [
+          "third-parties-insight"
+        ],
+        "est_savings_ms": 240,
+        "fix": "Review third-party tags, remove any that are unneeded, and load the rest after the page is interactive.",
+        "effort": "small"
+      },
+      {
+        "cause": "Web font loading behavior",
+        "affects": "mobile",
+        "audit_ids": [
+          "font-display-insight"
+        ],
+        "est_savings_ms": 60,
+        "fix": "Add font-display: swap (or optional) to the @font-face rules so text shows immediately.",
+        "effort": "small"
+      }
+    ],
+    "quick_win": "Compress and resize the page's images and convert them to WebP/AVIF, which could save up to about 1.35 seconds on mobile."
+  }
+}

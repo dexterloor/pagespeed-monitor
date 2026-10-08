@@ -1,0 +1,817 @@
+{
+  "id": "pagespeedMain001",
+  "name": "PageSpeed Monitor",
+  "nodes": [
+    {
+      "id": "7095b3aa-4da1-4cd3-a9a3-ff57a8db806d",
+      "name": "Note: overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        -380
+      ],
+      "parameters": {
+        "content": "## PageSpeed Monitor\nChecks public pages with Google PageSpeed Insights (3 runs × mobile + desktop), averages the runs, and flags pages that score below **0.9** or have a fix worth **≥ 100 ms**.\n\nFlagged pages get a plain-English analysis from Claude, a row in the **findings** tab, and one Slack digest per run. Every page gets **history** rows. Failed requests are retried once after 30 s, then logged to **errors**.\n\nCode in *Build reports* and *Findings row* is generated from the tested `scripts/lib/` in the repo.",
+        "width": 760,
+        "height": 300,
+        "color": 5
+      }
+    },
+    {
+      "id": "d3271f80-f207-4805-a01f-78cc0451fbf2",
+      "name": "Note: secrets",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2360,
+        -380
+      ],
+      "parameters": {
+        "content": "### Secrets\nPSI key, Google sign-in and webhook token are n8n credentials (encrypted).\nSlack webhook URL and Sheet ID come from environment variables set by `scripts/n8n.sh`, so this JSON contains no secrets.",
+        "width": 420,
+        "height": 200,
+        "color": 7
+      }
+    },
+    {
+      "id": "304986a8-1454-43be-a291-eb86b0db89b9",
+      "name": "Note: AI step",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2380,
+        680
+      ],
+      "parameters": {
+        "content": "### AI step\n`scripts/analyze.js` runs Claude Code headless with a fixed JSON schema, no tools, and validates the result (every cause must cite real audit ids). If Claude fails or times out, it returns a rule-based fallback, so the run never stops here.\n\n*Production: swap this node for the Anthropic API node with a team API key.*",
+        "width": 420,
+        "height": 230,
+        "color": 7
+      }
+    },
+    {
+      "id": "80337a62-5e6e-445f-af43-28debc6ea2e8",
+      "name": "Daily schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "disabled": true,
+      "notes": "Off. Set SCHEDULE_ENABLED in scripts/lib/config.js and redeploy.",
+      "notesInFlow": true
+    },
+    {
+      "id": "5259cf25-1e69-4845-aa2a-82441a41afd8",
+      "name": "On-demand webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pagespeed",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "6f3c2a5e-8d41-4b7a-9c0e-2d5f7a1b3c90",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pagespeedHook001",
+          "name": "PageSpeed webhook token"
+        }
+      }
+    },
+    {
+      "id": "c4cedfdc-a082-40c7-aec7-2c4ae5d38dae",
+      "name": "Check request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        200
+      ],
+      "parameters": {
+        "jsCode": "// Accepts {\"url\": \"...\"} or {\"urls\": [\"...\", \"...\"]}: up to 10 public http(s) URLs.\nconst body = $input.first().json.body || {};\nconst requested = [].concat(body.urls || [], body.url || []).map((u) => String(u).trim());\nconst urls = [...new Set(requested)].filter((u) => /^https?:\\/\\/[^\\s/$.?#].[^\\s]*$/i.test(u));\n\nlet error = null;\nif (!requested.length) error = 'Send {\"url\": \"https://...\"} or {\"urls\": [\"https://...\", ...]}';\nelse if (!urls.length) error = 'No valid http(s) URLs in the request';\nelse if (urls.length > 10) error = 'At most 10 URLs per request';\n\nreturn [{ json: { valid: !error, error, urls } }];\n"
+      }
+    },
+    {
+      "id": "000cfd60-9a36-4d1b-a283-14e9856ddb7d",
+      "name": "Valid request?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3a142b28-b531-4f96-aa17-ee418daa60da",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3b99e00f-07c8-4628-af7d-03629a8f30d6",
+      "name": "Accepted (202)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        620,
+        180
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"accepted\", \"execution_id\": $execution.id, \"urls\": $json.urls, \"message\": \"Results go to Google Sheets and Slack when the run finishes.\" } }}",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "9607c07a-b581-41cc-aa3b-09dd3f6067e4",
+      "name": "Bad request (400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        620,
+        380
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"rejected\", \"error\": $json.error } }}",
+        "options": {
+          "responseCode": 400
+        }
+      }
+    },
+    {
+      "id": "f148f5ca-ad61-4449-aafe-3dddee526e71",
+      "name": "URLs to check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Pages checked by the daily schedule. Edit this list to monitor different pages.\nconst DAILY_URLS = [\n  \"https://www.wikipedia.org/\",\n  \"https://developer.mozilla.org/en-US/\",\n  \"https://www.gov.uk/\",\n  \"https://web.dev/\",\n  \"https://www.bbc.com/news\",\n  \"https://www.theverge.com/\",\n  \"https://edition.cnn.com/\"\n];\n\n// Webhook runs arrive with a checked list of URLs; scheduled runs use DAILY_URLS.\nconst first = $input.first().json;\nconst fromWebhook = Array.isArray(first.urls);\nconst urls = fromWebhook ? first.urls : DAILY_URLS;\n\nreturn urls.map((url) => ({ json: { url, trigger: fromWebhook ? 'webhook' : 'schedule' } }));\n"
+      }
+    },
+    {
+      "id": "865c0808-958e-4ddc-ac16-367b33063716",
+      "name": "Make PSI requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// 3 runs per strategy, because single Lighthouse runs are noisy.\nconst STRATEGIES = [\"mobile\",\"desktop\"];\nconst RUNS = 3;\nconst CATEGORIES = [\"performance\",\"best-practices\"];\n// Only the fields the report needs (drops screenshots and other bulk).\nconst FIELDS = \"id,analysisUTCTimestamp,lighthouseResult(requestedUrl,finalUrl,lighthouseVersion,fetchTime,configSettings/formFactor,categories/*/score,audits)\";\n\n// The query string is built here because n8n's query-parameter list merges\n// repeated names, and PSI needs category=... twice.\nconst psiUrl = (url, strategy) => 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?' + [\n  `url=${encodeURIComponent(url)}`,\n  `strategy=${strategy}`,\n  ...CATEGORIES.map((c) => `category=${c}`),\n  `fields=${encodeURIComponent(FIELDS)}`,\n].join('&');\n\nreturn $input.all().flatMap(({ json }) =>\n  STRATEGIES.flatMap((strategy) =>\n    Array.from({ length: RUNS }, (_, i) => ({\n      json: { url: json.url, trigger: json.trigger, strategy, run: i + 1, psi_url: psiUrl(json.url, strategy) },\n    }))));\n"
+      }
+    },
+    {
+      "id": "49d31886-c50f-4207-ac4b-1c75b13d0a1b",
+      "name": "PSI run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        100
+      ],
+      "parameters": {
+        "url": "={{ $json.psi_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000,
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pagespeedPsiHdr1",
+          "name": "PageSpeed Insights API key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "934a1404-aeb9-44d1-aad7-a35ea3d7bd39",
+      "name": "Wait 30 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1500,
+        260
+      ],
+      "parameters": {
+        "amount": 30,
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "a621b353-891a-4976-a8b3-859c01ac9c93",
+      "name": "PSI retry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1720,
+        260
+      ],
+      "parameters": {
+        "url": "={{ $('Make PSI requests').item.json.psi_url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 120000,
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pagespeedPsiHdr1",
+          "name": "PageSpeed Insights API key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "efe6e6c8-3aeb-4727-a9ee-d8b3cc1aa23c",
+      "name": "All runs",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1940,
+        100
+      ],
+      "parameters": {
+        "numberInputs": 3
+      }
+    },
+    {
+      "id": "793cb48c-f123-4b10-a188-777a2ef9ad20",
+      "name": "Build reports",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// GENERATED from scripts/lib/config.js + scripts/lib/psi.js + scripts/lib/sheets.js by scripts/build-workflows.js.\n// Edit those files and run `npm run build:workflows`. Changes made here are overwritten.\n\n// ===== scripts/lib/config.js =====\n// Thresholds match the manual PageSpeed review process this project automates.\nconst CONFIG = {\n  SCORE_THRESHOLD: 0.9,\n  SAVINGS_THRESHOLD_MS: 100,\n  RUNS_PER_STRATEGY: 3,\n  STRATEGIES: ['mobile', 'desktop'],\n  CATEGORIES: ['performance', 'best-practices'],\n  // Daily 07:00 run in n8n. Off by default so nothing runs until you choose to;\n  // change here and run `scripts/n8n.sh deploy` (UI edits are overwritten on deploy).\n  SCHEDULE_ENABLED: false,\n  // PSI `fields` mask: drops screenshots and other bulk. The API can't select\n  // fields inside `audits` (it's a map), so audits come back whole.\n  // Measured: 2.2 MB -> 1.6 MB on a heavy page, 2.5 MB -> 250 KB on a light one.\n  PSI_FIELDS: 'id,analysisUTCTimestamp,lighthouseResult(requestedUrl,finalUrl,lighthouseVersion,fetchTime,configSettings/formFactor,categories/*/score,audits)',\n};\n\n// ===== scripts/lib/psi.js =====\n// Turns raw PageSpeed Insights (PSI) API responses into one compact report per URL:\n// averages the repeated runs per strategy, groups savings opportunities by root\n// cause, and decides whether the URL should be flagged.\n//\n// Pure functions, no dependencies, so the same code can run in tests, from the\n// CLI, or pasted into an n8n Code node.\n\nconst { SCORE_THRESHOLD, SAVINGS_THRESHOLD_MS } = CONFIG;\n\nconst METRICS = {\n  lcp_ms: 'largest-contentful-paint',\n  fcp_ms: 'first-contentful-paint',\n  tbt_ms: 'total-blocking-time',\n  cls: 'cumulative-layout-shift',\n  si_ms: 'speed-index',\n};\n\n// Metric audits report the metric itself, not something to fix.\nconst METRIC_AUDIT_IDS = new Set([...Object.values(METRICS), 'interactive', 'max-potential-fid']);\n\n// A diagnostic is a failing audit with no time estimate (e.g. \"LCP image not\n// discoverable\"). It's context for the analysis, never a reason to flag.\nconst DIAGNOSTIC_MAX_SCORE = 0.9;\n\n// Time-based metrics only: CLS savings are unitless and can't be compared in ms.\nconst TIME_SAVINGS_KEYS = ['LCP', 'FCP', 'TBT', 'INP'];\n\n// Lighthouse audit id -> root cause. Covers both the classic \"opportunity\" audits\n// and the newer \"insight\" audits, because PSI has shipped both.\nconst ROOT_CAUSES = {\n  images: {\n    label: 'Images',\n    audits: ['uses-optimized-images', 'modern-image-formats', 'uses-responsive-images', 'offscreen-images',\n      'efficient-animated-content', 'unsized-images', 'image-delivery-insight'],\n  },\n  javascript: {\n    label: 'JavaScript',\n    audits: ['unused-javascript', 'unminified-javascript', 'legacy-javascript', 'legacy-javascript-insight',\n      'duplicated-javascript', 'duplicated-javascript-insight', 'bootup-time', 'mainthread-work-breakdown'],\n  },\n  render_blocking: {\n    label: 'Render-blocking CSS and requests',\n    audits: ['render-blocking-resources', 'render-blocking-insight', 'unused-css-rules', 'unminified-css',\n      'critical-request-chains', 'network-dependency-tree-insight'],\n  },\n  lcp: {\n    label: 'Largest Contentful Paint element',\n    audits: ['lcp-discovery-insight', 'prioritize-lcp-image', 'lcp-phases-insight', 'largest-contentful-paint-element'],\n  },\n  server: {\n    label: 'Server, caching and network',\n    audits: ['server-response-time', 'document-latency-insight', 'redirects', 'uses-text-compression',\n      'uses-http2', 'uses-rel-preconnect', 'uses-long-cache-ttl', 'cache-insight'],\n  },\n  fonts: {\n    label: 'Web fonts',\n    audits: ['font-display', 'font-display-insight'],\n  },\n  third_party: {\n    label: 'Third-party scripts',\n    audits: ['third-party-summary', 'third-parties-insight', 'third-party-facades'],\n  },\n  layout: {\n    label: 'Layout shifts',\n    audits: ['layout-shifts', 'cls-culprits-insight'],\n  },\n};\n\nconst AUDIT_TO_CAUSE = Object.fromEntries(\n  Object.entries(ROOT_CAUSES).flatMap(([cause, { audits }]) => audits.map((id) => [id, cause])),\n);\n\nconst round = (n, places = 0) => {\n  const f = 10 ** places;\n  return Math.round(n * f) / f;\n};\nconst mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;\n\nfunction savingsMs(audit) {\n  const overall = audit.details && audit.details.overallSavingsMs;\n  if (typeof overall === 'number') return overall;\n  const ms = TIME_SAVINGS_KEYS\n    .map((k) => audit.metricSavings && audit.metricSavings[k])\n    .filter((v) => typeof v === 'number');\n  return ms.length ? Math.max(...ms) : 0;\n}\n\n// One PSI API response -> the few fields we keep.\nfunction extractRun(psi) {\n  const lr = psi && psi.lighthouseResult;\n  if (!lr || !lr.categories || !lr.audits) {\n    throw new Error('Not a PageSpeed Insights response: missing lighthouseResult');\n  }\n  const perf = lr.categories.performance;\n  if (!perf || typeof perf.score !== 'number') {\n    throw new Error('PageSpeed Insights response has no performance score');\n  }\n  const bp = lr.categories['best-practices'];\n\n  const metrics = {};\n  for (const [key, id] of Object.entries(METRICS)) {\n    const v = lr.audits[id] && lr.audits[id].numericValue;\n    metrics[key] = typeof v === 'number' ? v : null;\n  }\n\n  const opportunities = [];\n  const diagnostics = [];\n  for (const [id, a] of Object.entries(lr.audits)) {\n    if (METRIC_AUDIT_IDS.has(id) || a.score === 1) continue;\n    const ms = savingsMs(a);\n    if (ms > 0) {\n      opportunities.push({ id, title: a.title || id, savings_ms: ms });\n    } else if (typeof a.score === 'number' && a.score < DIAGNOSTIC_MAX_SCORE) {\n      diagnostics.push({ id, title: a.title || id, score: a.score });\n    }\n  }\n\n  return {\n    // Group on the URL we asked for: the final URL can differ between runs\n    // (geo or device redirects) and is kept separately.\n    url: lr.requestedUrl || lr.finalUrl || psi.id,\n    final_url: lr.finalUrl || null,\n    strategy: (lr.configSettings && lr.configSettings.formFactor) || null,\n    fetched_at: lr.fetchTime || psi.analysisUTCTimestamp || null,\n    lighthouse_version: lr.lighthouseVersion || null,\n    performance: perf.score,\n    best_practices: bp && typeof bp.score === 'number' ? bp.score : null,\n    metrics,\n    opportunities,\n    diagnostics,\n  };\n}\n\n// Several extracted runs of the same URL + strategy -> one averaged result.\n// Opportunities must appear in a majority of runs, which filters out one-off noise.\nfunction averageRuns(runs) {\n  if (!runs.length) throw new Error('averageRuns needs at least one run');\n\n  const metrics = {};\n  for (const key of Object.keys(METRICS)) {\n    const vals = runs.map((r) => r.metrics[key]).filter((v) => typeof v === 'number');\n    metrics[key] = vals.length ? round(mean(vals), key === 'cls' ? 3 : 0) : null;\n  }\n\n  const byId = new Map();\n  for (const run of runs) {\n    for (const o of run.opportunities) {\n      const entry = byId.get(o.id) || { id: o.id, title: o.title, total: 0, seen_in_runs: 0 };\n      entry.total += o.savings_ms;\n      entry.seen_in_runs += 1;\n      byId.set(o.id, entry);\n    }\n  }\n  const opportunities = [...byId.values()]\n    .filter((e) => e.seen_in_runs * 2 > runs.length)\n    // Divide by all runs, not just the ones it showed up in, so a flaky audit isn't overstated.\n    .map(({ id, title, total, seen_in_runs }) => ({ id, title, savings_ms: round(total / runs.length), seen_in_runs }))\n    .sort((a, b) => b.savings_ms - a.savings_ms);\n\n  // Same majority rule for diagnostics. An audit that had savings in most runs is\n  // already an opportunity, so it isn't listed twice.\n  const opportunityIds = new Set(opportunities.map((o) => o.id));\n  const diagById = new Map();\n  for (const run of runs) {\n    for (const d of run.diagnostics || []) {\n      const entry = diagById.get(d.id) || { id: d.id, title: d.title, scores: [] };\n      entry.scores.push(d.score);\n      diagById.set(d.id, entry);\n    }\n  }\n  const diagnostics = [...diagById.values()]\n    .filter((e) => e.scores.length * 2 > runs.length && !opportunityIds.has(e.id))\n    .map(({ id, title, scores }) => ({ id, title, score: round(mean(scores), 2) }))\n    .sort((a, b) => a.score - b.score || a.id.localeCompare(b.id));\n\n  const perfScores = runs.map((r) => r.performance);\n  const bpScores = runs.map((r) => r.best_practices).filter((v) => typeof v === 'number');\n\n  return {\n    runs: runs.length,\n    performance: round(mean(perfScores), 2),\n    performance_range: [Math.min(...perfScores), Math.max(...perfScores)],\n    best_practices: bpScores.length ? round(mean(bpScores), 2) : null,\n    metrics,\n    opportunities,\n    diagnostics,\n  };\n}\n\n// Opportunities -> root-cause groups, biggest first. Savings overlap between audits\n// (e.g. unused JS and render-blocking both delay LCP), so a group reports its\n// largest single saving rather than a sum.\nfunction groupFindings(opportunities) {\n  const groups = new Map();\n  for (const o of opportunities) {\n    const cause = AUDIT_TO_CAUSE[o.id] || 'other';\n    const g = groups.get(cause) || {\n      cause,\n      label: cause === 'other' ? 'Other' : ROOT_CAUSES[cause].label,\n      max_savings_ms: 0,\n      audits: [],\n    };\n    g.audits.push({ id: o.id, title: o.title, savings_ms: o.savings_ms });\n    g.max_savings_ms = Math.max(g.max_savings_ms, o.savings_ms);\n    groups.set(cause, g);\n  }\n  return [...groups.values()].sort((a, b) => b.max_savings_ms - a.max_savings_ms);\n}\n\nfunction flagReasons(summary, thresholds = {}) {\n  const scoreThreshold = thresholds.score ?? SCORE_THRESHOLD;\n  const savingsThreshold = thresholds.savings_ms ?? SAVINGS_THRESHOLD_MS;\n  const reasons = [];\n  if (summary.performance < scoreThreshold) {\n    reasons.push(`performance ${summary.performance} < ${scoreThreshold}`);\n  }\n  const big = summary.opportunities.filter((o) => o.savings_ms >= savingsThreshold);\n  if (big.length) {\n    reasons.push(`${big.length} opportunit${big.length === 1 ? 'y' : 'ies'} saving >= ${savingsThreshold}ms (top: ${big[0].id} ${big[0].savings_ms}ms)`);\n  }\n  return reasons;\n}\n\n// Raw PSI responses for one URL (any mix of strategies) -> the full report.\nfunction buildReport(psiResponses, { thresholds = {}, now = new Date() } = {}) {\n  const runs = psiResponses.map(extractRun);\n  const urls = new Set(runs.map((r) => r.url));\n  if (urls.size > 1) throw new Error(`buildReport expects one URL, got: ${[...urls].join(', ')}`);\n\n  const byStrategy = {};\n  for (const run of runs) {\n    if (!run.strategy) throw new Error('PageSpeed Insights response has no formFactor (mobile/desktop)');\n    (byStrategy[run.strategy] = byStrategy[run.strategy] || []).push(run);\n  }\n\n  const strategies = {};\n  const reasons = [];\n  for (const [strategy, list] of Object.entries(byStrategy)) {\n    const summary = averageRuns(list);\n    summary.root_causes = groupFindings(summary.opportunities);\n    summary.flag_reasons = flagReasons(summary, thresholds);\n    summary.flagged = summary.flag_reasons.length > 0;\n    strategies[strategy] = summary;\n    reasons.push(...summary.flag_reasons.map((r) => `${strategy}: ${r}`));\n  }\n\n  return {\n    url: runs[0].url,\n    final_url: runs[0].final_url,\n    generated_at: now.toISOString(),\n    lighthouse_version: runs[0].lighthouse_version,\n    thresholds: {\n      score: thresholds.score ?? SCORE_THRESHOLD,\n      savings_ms: thresholds.savings_ms ?? SAVINGS_THRESHOLD_MS,\n    },\n    flagged: reasons.length > 0,\n    flag_reasons: reasons,\n    strategies,\n  };\n}\n\n// Every audit id in a report, used to catch the AI citing audits that don't exist.\nfunction auditIds(report) {\n  const ids = new Set();\n  for (const s of Object.values(report.strategies)) {\n    for (const o of s.opportunities) ids.add(o.id);\n    for (const d of s.diagnostics || []) ids.add(d.id);\n  }\n  return ids;\n}\n\n// ===== scripts/lib/sheets.js =====\n// Maps reports and analyses to rows for the three Google Sheets tabs.\n// Column order here is the source of truth for docs/sheets-setup.md.\n\nconst HISTORY_COLUMNS = [\n  'timestamp', 'run_id', 'trigger', 'url', 'strategy', 'performance', 'best_practices',\n  'lcp_ms', 'fcp_ms', 'tbt_ms', 'cls', 'si_ms', 'runs', 'flagged', 'flag_reasons',\n];\n\nconst FINDINGS_COLUMNS = [\n  'timestamp', 'run_id', 'url', 'risk', 'mobile_score', 'desktop_score', 'summary',\n  'root_causes', 'quick_win', 'analysis_source', 'fallback_reason',\n];\n\nconst ERRORS_COLUMNS = [\n  'timestamp', 'run_id', 'workflow', 'node', 'url', 'error_message', 'http_status', 'attempts',\n];\n\n// One row per strategy, written on every run.\nfunction historyRows(report, { runId, trigger }) {\n  return Object.entries(report.strategies).map(([strategy, s]) => ({\n    timestamp: report.generated_at,\n    run_id: runId,\n    trigger,\n    url: report.url,\n    strategy,\n    performance: s.performance,\n    best_practices: s.best_practices,\n    lcp_ms: s.metrics.lcp_ms,\n    fcp_ms: s.metrics.fcp_ms,\n    tbt_ms: s.metrics.tbt_ms,\n    cls: s.metrics.cls,\n    si_ms: s.metrics.si_ms,\n    runs: s.runs,\n    flagged: s.flagged,\n    flag_reasons: s.flag_reasons.join('; '),\n  }));\n}\n\n// One row per flagged URL. Root causes are flattened to readable lines so the\n// sheet works for people who never open the JSON.\nfunction findingsRow(report, analysisResult, { runId }) {\n  const a = analysisResult.analysis;\n  const score = (s) => (report.strategies[s] ? report.strategies[s].performance : null);\n  return {\n    timestamp: report.generated_at,\n    run_id: runId,\n    url: report.url,\n    risk: a.risk,\n    mobile_score: score('mobile'),\n    desktop_score: score('desktop'),\n    summary: a.summary,\n    root_causes: a.root_causes\n      .map((rc, i) => `${i + 1}. ${rc.cause} [${rc.affects}, ~${rc.est_savings_ms}ms, ${rc.effort}]: ${rc.fix}`)\n      .join('\\n'),\n    quick_win: a.quick_win,\n    analysis_source: analysisResult.source,\n    fallback_reason: analysisResult.fallback_reason || '',\n  };\n}\n\n// ===== n8n glue =====\n// Every PSI request arrives here exactly once: as a response, or as an error after\n// one retry. Group by URL and build one report per URL.\nconst runId = $execution.id;\nconst now = new Date().toISOString();\n\nconst errorText = (e) => (typeof e === 'string' ? e : (e && (e.message || e.description)) || JSON.stringify(e));\nconst errorStatus = (e) => (e && (e.httpCode || e.status || e.statusCode)) || '';\n\nconst groups = new Map();\n$input.all().forEach((item, i) => {\n  const req = $('Make PSI requests').itemMatching(i).json;\n  const g = groups.get(req.url) || { url: req.url, trigger: req.trigger, responses: [], errors: [] };\n  if (item.json.error || !item.json.lighthouseResult) {\n    const e = item.json.error || item.json;\n    // Request errors reach this node only after the retry.\n    g.errors.push({ strategy: req.strategy, run: req.run, message: errorText(e), http_status: errorStatus(e), attempts: 2 });\n  } else {\n    try {\n      extractRun(item.json); // reject responses missing the fields the report needs\n      g.responses.push(item.json);\n    } catch (err) {\n      g.errors.push({ strategy: req.strategy, run: req.run, message: err.message, http_status: 200, attempts: 1 });\n    }\n  }\n  groups.set(req.url, g);\n});\n\nreturn [...groups.values()].map((g) => {\n  const errorRows = g.errors.map((e) => ({\n    timestamp: now,\n    run_id: runId,\n    workflow: $workflow.name,\n    node: 'PSI run',\n    url: g.url,\n    error_message: `${e.strategy} run ${e.run}: ${e.message}`.slice(0, 500),\n    http_status: e.http_status,\n    attempts: e.attempts,\n  }));\n\n  let report = null;\n  if (g.responses.length) {\n    try {\n      report = buildReport(g.responses);\n      report.url = g.url;\n    } catch (err) {\n      errorRows.push({ timestamp: now, run_id: runId, workflow: $workflow.name, node: 'Build reports',\n        url: g.url, error_message: err.message, http_status: '', attempts: 1 });\n    }\n  }\n\n  const status = !report ? 'failed' : g.errors.length ? 'partial' : 'ok';\n  return {\n    json: {\n      url: g.url,\n      trigger: g.trigger,\n      run_id: runId,\n      status,\n      flagged: Boolean(report && report.flagged),\n      report,\n      report_b64: report ? Buffer.from(JSON.stringify(report)).toString('base64') : null,\n      history_rows: report ? historyRows(report, { runId, trigger: g.trigger }) : [],\n      error_rows: errorRows,\n    },\n  };\n});\n"
+      }
+    },
+    {
+      "id": "8bf08353-39d0-4ba5-a047-fba4d38314f8",
+      "name": "History rows",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2380,
+        -100
+      ],
+      "parameters": {
+        "fieldToSplitOut": "history_rows",
+        "options": {}
+      }
+    },
+    {
+      "id": "2cf20a79-0594-428c-a522-b32a46b2ac34",
+      "name": "Append history",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2600,
+        -100
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "history"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pagespeedSheets1",
+          "name": "Google Sheets (PageSpeed Monitor)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "7d990c84-ed89-4ed8-aefd-c027bd0c45b9",
+      "name": "Error rows",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2380,
+        500
+      ],
+      "parameters": {
+        "fieldToSplitOut": "error_rows",
+        "options": {}
+      }
+    },
+    {
+      "id": "ce05d29d-5085-447e-a6f3-b578f66665a9",
+      "name": "Append errors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2600,
+        500
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "errors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pagespeedSheets1",
+          "name": "Google Sheets (PageSpeed Monitor)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "93bc72e2-8c05-46c7-ab75-ea9ecd522979",
+      "name": "Flagged?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2380,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1da61e6e-f8df-4beb-ac77-0a1171cd2c8a",
+              "leftValue": "={{ $json.flagged }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "9ae8a430-b482-4678-aacf-c6d36fcf719b",
+      "name": "AI analysis (Claude)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        80
+      ],
+      "parameters": {
+        "command": "=node scripts/analyze.js --b64 {{ $json.report_b64 }}"
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "31d50266-fe78-4eed-abb3-005292e1490f",
+      "name": "Findings row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2820,
+        80
+      ],
+      "parameters": {
+        "jsCode": "// GENERATED from scripts/lib/sheets.js by scripts/build-workflows.js.\n// Edit those files and run `npm run build:workflows`. Changes made here are overwritten.\n\n// ===== scripts/lib/sheets.js =====\n// Maps reports and analyses to rows for the three Google Sheets tabs.\n// Column order here is the source of truth for docs/sheets-setup.md.\n\nconst HISTORY_COLUMNS = [\n  'timestamp', 'run_id', 'trigger', 'url', 'strategy', 'performance', 'best_practices',\n  'lcp_ms', 'fcp_ms', 'tbt_ms', 'cls', 'si_ms', 'runs', 'flagged', 'flag_reasons',\n];\n\nconst FINDINGS_COLUMNS = [\n  'timestamp', 'run_id', 'url', 'risk', 'mobile_score', 'desktop_score', 'summary',\n  'root_causes', 'quick_win', 'analysis_source', 'fallback_reason',\n];\n\nconst ERRORS_COLUMNS = [\n  'timestamp', 'run_id', 'workflow', 'node', 'url', 'error_message', 'http_status', 'attempts',\n];\n\n// One row per strategy, written on every run.\nfunction historyRows(report, { runId, trigger }) {\n  return Object.entries(report.strategies).map(([strategy, s]) => ({\n    timestamp: report.generated_at,\n    run_id: runId,\n    trigger,\n    url: report.url,\n    strategy,\n    performance: s.performance,\n    best_practices: s.best_practices,\n    lcp_ms: s.metrics.lcp_ms,\n    fcp_ms: s.metrics.fcp_ms,\n    tbt_ms: s.metrics.tbt_ms,\n    cls: s.metrics.cls,\n    si_ms: s.metrics.si_ms,\n    runs: s.runs,\n    flagged: s.flagged,\n    flag_reasons: s.flag_reasons.join('; '),\n  }));\n}\n\n// One row per flagged URL. Root causes are flattened to readable lines so the\n// sheet works for people who never open the JSON.\nfunction findingsRow(report, analysisResult, { runId }) {\n  const a = analysisResult.analysis;\n  const score = (s) => (report.strategies[s] ? report.strategies[s].performance : null);\n  return {\n    timestamp: report.generated_at,\n    run_id: runId,\n    url: report.url,\n    risk: a.risk,\n    mobile_score: score('mobile'),\n    desktop_score: score('desktop'),\n    summary: a.summary,\n    root_causes: a.root_causes\n      .map((rc, i) => `${i + 1}. ${rc.cause} [${rc.affects}, ~${rc.est_savings_ms}ms, ${rc.effort}]: ${rc.fix}`)\n      .join('\\n'),\n    quick_win: a.quick_win,\n    analysis_source: analysisResult.source,\n    fallback_reason: analysisResult.fallback_reason || '',\n  };\n}\n\n// ===== n8n glue =====\n// One findings row per flagged URL, from the AI step's JSON on stdout.\nreturn $input.all().map((item, i) => {\n  const src = $('Flagged?').itemMatching(i).json;\n  let result = null;\n  try {\n    result = JSON.parse(item.json.stdout);\n  } catch (err) {\n    // analyze.js always prints JSON for a valid report, so this means it didn't run.\n  }\n  if (!result || !result.analysis) {\n    const reason = (item.json.stderr || item.json.error || 'no output').toString().slice(0, 300);\n    result = {\n      source: 'error',\n      fallback_reason: reason,\n      analysis: {\n        summary: 'The AI analysis step did not run. See the history tab for scores.',\n        risk: src.report.strategies.mobile && src.report.strategies.mobile.performance < 0.5 ? 'high' : 'medium',\n        root_causes: [],\n        quick_win: '',\n      },\n    };\n  }\n  return { json: findingsRow(src.report, result, { runId: src.run_id }) };\n});\n"
+      }
+    },
+    {
+      "id": "13268bb9-aea3-418c-a939-0d99d1d5cd0f",
+      "name": "Append findings",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3040,
+        80
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.GOOGLE_SHEET_ID }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "findings"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "pagespeedSheets1",
+          "name": "Google Sheets (PageSpeed Monitor)"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "31e86e78-b44b-468d-a662-ef4cc79e89fe",
+      "name": "Collect for digest",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3040,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "19d65d46-139a-4ec9-a739-328e72c11065",
+      "name": "Slack digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3260,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// One Slack message per run: flagged pages first, then pages that couldn't be tested.\nconst items = $input.all().map((i) => i.json);\nconst findings = items.filter((j) => j.risk !== undefined);\nconst reports = items.filter((j) => j.status !== undefined);\nconst failed = reports.filter((r) => r.status === 'failed');\nconst partial = reports.filter((r) => r.status === 'partial');\n\nif (!findings.length && !failed.length) return [];\n\n// %PREFIX% is filled in by \"Post to Slack\" from SLACK_PREFIX (e.g. \"[TEST] \").\n// Code nodes can't read environment variables; expressions can.\nconst icon = { high: ':red_circle:', medium: ':large_orange_circle:', low: ':large_yellow_circle:' };\nconst pct = (s) => (typeof s === 'number' ? Math.round(s * 100) : '–');\nconst order = { high: 0, medium: 1, low: 2 };\nfindings.sort((a, b) => (order[a.risk] ?? 3) - (order[b.risk] ?? 3));\n\nconst blocks = [{\n  type: 'header',\n  text: { type: 'plain_text', text: `%PREFIX%PageSpeed Monitor: ${findings.length} of ${reports.length} pages need attention` },\n}];\nfor (const f of findings) {\n  const ai = f.analysis_source === 'claude' ? '' : ` _(${f.analysis_source} summary)_`;\n  blocks.push({\n    type: 'section',\n    text: {\n      type: 'mrkdwn',\n      text: [\n        `${icon[f.risk] || ':white_circle:'} *<${f.url}|${f.url}>*: ${f.risk} risk · mobile ${pct(f.mobile_score)} · desktop ${pct(f.desktop_score)}${ai}`,\n        f.summary,\n        f.quick_win ? `*Quick win:* ${f.quick_win}` : '',\n      ].filter(Boolean).join('\\n').slice(0, 2900),\n    },\n  });\n}\nif (failed.length || partial.length) {\n  const lines = [\n    ...failed.map((r) => `:x: ${r.url}: no PageSpeed data (${r.error_rows.length} failed runs)`),\n    ...partial.map((r) => `:warning: ${r.url}: ${r.error_rows.length} of the runs failed, results use the rest`),\n  ];\n  blocks.push({ type: 'section', text: { type: 'mrkdwn', text: lines.join('\\n').slice(0, 2900) } });\n}\nblocks.push({\n  type: 'context',\n  elements: [{ type: 'mrkdwn', text: `Run ${$execution.id} · details in the PageSpeed Monitor sheet (findings and history tabs)` }],\n});\n\nreturn [{ json: { text: blocks[0].text.text, blocks } }];\n"
+      }
+    },
+    {
+      "id": "fe9f3787-5f6c-4f06-a86e-d408805e8289",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text, blocks: $json.blocks }).replaceAll('%PREFIX%', $env.SLACK_PREFIX || '') }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Daily schedule": {
+      "main": [
+        [
+          {
+            "node": "URLs to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On-demand webhook": {
+      "main": [
+        [
+          {
+            "node": "Check request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check request": {
+      "main": [
+        [
+          {
+            "node": "Valid request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid request?": {
+      "main": [
+        [
+          {
+            "node": "Accepted (202)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bad request (400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepted (202)": {
+      "main": [
+        [
+          {
+            "node": "URLs to check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URLs to check": {
+      "main": [
+        [
+          {
+            "node": "Make PSI requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Make PSI requests": {
+      "main": [
+        [
+          {
+            "node": "PSI run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PSI run": {
+      "main": [
+        [
+          {
+            "node": "All runs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 30 s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 s": {
+      "main": [
+        [
+          {
+            "node": "PSI retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PSI retry": {
+      "main": [
+        [
+          {
+            "node": "All runs",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "All runs",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "All runs": {
+      "main": [
+        [
+          {
+            "node": "Build reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build reports": {
+      "main": [
+        [
+          {
+            "node": "History rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Error rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Flagged?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect for digest",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "History rows": {
+      "main": [
+        [
+          {
+            "node": "Append history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error rows": {
+      "main": [
+        [
+          {
+            "node": "Append errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flagged?": {
+      "main": [
+        [
+          {
+            "node": "AI analysis (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI analysis (Claude)": {
+      "main": [
+        [
+          {
+            "node": "Findings row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Findings row": {
+      "main": [
+        [
+          {
+            "node": "Append findings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Collect for digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect for digest": {
+      "main": [
+        [
+          {
+            "node": "Slack digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack digest": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "pagespeedErr0001",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "active": false,
+  "tags": []
+}

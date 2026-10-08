@@ -1,0 +1,12 @@
+{
+  "_note": "Well-known public sites only. Mix of fast and heavy pages so a demo run shows both passing and flagged results.",
+  "urls": [
+    "https://www.wikipedia.org/",
+    "https://developer.mozilla.org/en-US/",
+    "https://www.gov.uk/",
+    "https://web.dev/",
+    "https://www.bbc.com/news",
+    "https://www.theverge.com/",
+    "https://edition.cnn.com/"
+  ]
+}
