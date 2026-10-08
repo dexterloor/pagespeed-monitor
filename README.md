@@ -17,24 +17,31 @@ A single Lighthouse run is noisy, the raw report is long, and most of the people
 
 ## How it works
 
-```
- Daily schedule (07:00) ───────────────────────────────┐
-                                                       ├─► URLs to check ─► 3 runs × mobile + desktop per URL
- Webhook POST /webhook/pagespeed ─► Check request ─┬─ 202 ┘
-   header X-Webhook-Token, {"url"} or {"urls"}     └─ 400 (invalid body)
-                                                                  │
-         PSI run ── error ─► Wait 30 s ─► PSI retry               │  PageSpeed Insights API
-            │                               │  │                  │
-            └──────────────► All runs ◄─────┘  └─ still failing ──┘
-                                │
-                         Build reports  (average runs, group by root cause, flag)
-             ┌──────────────────┼──────────────────────────┐
-     Sheets: history       Flagged? ─► Claude ─►      Sheets: errors
-                           Sheets: findings
-                                │
-                    One Slack digest per run (flagged + failed pages)
+```mermaid
+flowchart TD
+    sched(["Daily schedule<br/>(off until enabled)"]) --> urls
+    hook(["Webhook POST /webhook/pagespeed<br/>X-Webhook-Token header"]) --> check{"Valid body?"}
+    check -- no --> r400["400 Bad Request"]
+    check -- yes --> r202["202 Accepted<br/>+ execution ID"]
+    r202 --> urls["URLs to check"]
+    urls --> fan["3 runs × mobile + desktop<br/>per URL"]
+    fan --> psi["PageSpeed Insights API"]
+    psi -- error --> wait["Wait 30 s"] --> retry["Retry once"]
+    psi -- ok --> runs["All runs"]
+    retry --> runs
+    runs --> build["Build reports<br/>average runs · group by root cause · flag"]
+    build --> hist[("Sheets: history")]
+    build -- failed runs --> errs[("Sheets: errors")]
+    build --> flag{"Score &lt; 0.9 or<br/>a saving ≥ 100 ms?"}
+    flag -- yes --> claude["Claude Code (claude -p)<br/>summary · root causes · fixes · risk<br/>rule-based fallback if it fails"]
+    claude --> find[("Sheets: findings")]
+    claude --> digest["Slack: one digest per run<br/>flagged pages by risk + pages that couldn't be tested"]
+    build -- failed pages --> digest
 
- Workflow fails outright ─► Error workflow ─► Slack alert + Sheets: errors row
+    subgraph errwf ["Error workflow"]
+        fail(["Workflow fails outright"]) --> ealert["Slack alert"]
+        fail --> erow[("Sheets: errors")]
+    end
 ```
 
 | Step | Tool | Notes |
