@@ -32,7 +32,7 @@ timestamp,run_id,url,risk,mobile_score,desktop_score,summary,root_causes,quick_w
 
 | Column | Meaning |
 |---|---|
-| `risk` | `low` / `medium` / `high` (rubric in `prompts/analyze-report.md`) |
+| `risk` | `low` / `medium` / `high`, from `scripts/lib/risk.js` (the same rubric as `prompts/analyze-report.md`) |
 | `summary` | Plain-English summary for non-developers |
 | `root_causes` | Numbered list: cause, affected strategy, estimated savings, effort, fix |
 | `analysis_source` | `claude`, or `fallback` if the AI step failed validation or timed out |
@@ -45,3 +45,14 @@ timestamp,run_id,workflow,node,url,error_message,http_status,attempts
 ```
 
 Tip: freeze row 1 and add a conditional format on `history.performance` (red below 0.5, amber below 0.9) for a quick visual trend.
+
+## `escalations` (optional): filled in by people, not the workflow
+
+The training pack asks VAs to log every message they send about a page, so nobody sends the same alert twice and "is this new?" has an answer. Add this tab if your team uses that process. The workflow never reads or writes it.
+
+```
+first_sent,last_sent,url,risk,mobile_score,sent_to,run_id,status,notes
+```
+
+One row per page, edited in place. `risk` can also be `down` (the page wasn't loading). `status` is `open`, `updated` or `fixed`.
+
