@@ -54,5 +54,5 @@ The training pack asks VAs to log every message they send about a page, so nobod
 first_sent,last_sent,url,risk,mobile_score,sent_to,run_id,status,notes
 ```
 
-One row per page, edited in place. `risk` can also be `down` (the page wasn't loading). `status` is `open`, `updated` or `fixed`.
+One row per page, edited in place. `risk` is the highest risk the client has been told about (`high`, `medium`, or `down` if the page wasn't loading). `status` is `open`, `updated`, `accepted` (the client won't fix it) or `fixed`. The rules for filling it in are in the training pack's [what-to-do.md](https://github.com/dexterloor/pagespeed-monitor-training/blob/main/what-to-do.md#the-escalation-log).
 
