@@ -105,13 +105,23 @@ test('Findings row node maps AI output, and survives a failed AI step', async ()
   assert.equal(out[0].json.analysis_source, 'fallback');
   assert.equal(out[0].json.risk, 'high');
   assert.equal(out[1].json.analysis_source, 'error');
+  assert.equal(out[1].json.risk, 'high', 'the error path uses the same rubric');
   assert.match(out[1].json.fallback_reason, /not found/);
 });
 
-test('Slack digest: one message, nothing when all pages pass', async () => {
+test('Slack digest: one message per run, a single line when all pages pass', async () => {
   const jsCode = byName(main, 'Slack digest').parameters.jsCode;
-  const none = await runCodeNode(jsCode, { items: [{ json: { status: 'ok', url: 'a', error_rows: [] } }] });
-  assert.equal(none.length, 0);
+  const passed = await runCodeNode(jsCode, { items: [
+    { json: { status: 'ok', url: 'a', error_rows: [] } },
+    { json: { status: 'partial', url: 'b', error_rows: [{}] } },
+  ] });
+  assert.equal(passed.length, 1);
+  assert.equal(passed[0].json.text, '%PREFIX%✅ PageSpeed Monitor: all 2 pages passed');
+  assert.match(passed[0].json.blocks[1].text.text, /^:warning: b: 1 of the runs failed/);
+  assert.match(passed[0].json.blocks.at(-1).elements[0].text, /\(history and errors tabs\)$/);
+  const one = await runCodeNode(jsCode, { items: [{ json: { status: 'ok', url: 'a', error_rows: [] } }] });
+  assert.equal(one[0].json.text, '%PREFIX%✅ PageSpeed Monitor: 1 page passed');
+  assert.equal((await runCodeNode(jsCode, { items: [] })).length, 0);
 
   const out = await runCodeNode(jsCode, {
     items: [

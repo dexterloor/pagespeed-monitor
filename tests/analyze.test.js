@@ -51,6 +51,15 @@ test('returns Claude analysis when it is valid', async () => {
   assert.equal(fake.calls[0].settings.timeoutMs, 180000);
 });
 
+test('risk comes from the rubric in code, not from Claude', async () => {
+  // score 0.6 and a 700 ms saving -> medium; Claude says high
+  const fake = fakeClaude({ ok: true, stdout: envelope({ ...valid, risk: 'high' }) });
+  const res = await analyze(report, { runClaude: fake.run, env: {} });
+  assert.equal(res.source, 'claude');
+  assert.equal(res.analysis.risk, 'medium');
+  assert.equal(res.claude_risk, 'high', 'the disagreement is kept for debugging');
+});
+
 test('retries once on invalid output, then succeeds', async () => {
   const fake = fakeClaude(
     { ok: true, stdout: envelope({ ...valid, risk: 'catastrophic' }) },

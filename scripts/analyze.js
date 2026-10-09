@@ -21,6 +21,7 @@ const { spawn } = require('node:child_process');
 const {
   ANALYSIS_SCHEMA, validateAnalysis, fallbackAnalysis, parseClaudeEnvelope,
 } = require('./lib/analysis');
+const { riskFromReport } = require('./lib/risk');
 
 const PROMPT_PATH = path.join(__dirname, '..', 'prompts', 'analyze-report.md');
 const MAX_ATTEMPTS = 2;
@@ -108,7 +109,13 @@ async function analyze(report, opts = {}) {
       continue;
     }
     const checked = validateAnalysis(parsed.value, report);
-    if (checked.ok) return result('claude', checked.value, { attempts });
+    if (checked.ok) {
+      // Claude applies the rubric too, but the code is the reference, so the
+      // same scores always give the same risk.
+      const risk = riskFromReport(report);
+      const extra = checked.value.risk === risk ? {} : { claude_risk: checked.value.risk };
+      return result('claude', { ...checked.value, risk }, { attempts, ...extra });
+    }
     lastError = `invalid analysis: ${checked.errors.join('; ')}`;
   }
   return result('fallback', fallbackAnalysis(report), { fallback_reason: lastError, attempts });

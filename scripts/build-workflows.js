@@ -220,7 +220,7 @@ return $input.all().map((item, i) => {
       fallback_reason: reason,
       analysis: {
         summary: 'The AI analysis step did not run. See the history tab for scores.',
-        risk: src.report.strategies.mobile && src.report.strategies.mobile.performance < 0.5 ? 'high' : 'medium',
+        risk: riskFromReport(src.report),
         root_causes: [],
         quick_win: '',
       },
@@ -232,13 +232,15 @@ return $input.all().map((item, i) => {
 
 const CODE_DIGEST = `
 // One Slack message per run: flagged pages first, then pages that couldn't be tested.
+// When every page passes it still posts one line, so a missing message means the
+// run didn't happen or broke.
 const items = $input.all().map((i) => i.json);
 const findings = items.filter((j) => j.risk !== undefined);
 const reports = items.filter((j) => j.status !== undefined);
 const failed = reports.filter((r) => r.status === 'failed');
 const partial = reports.filter((r) => r.status === 'partial');
 
-if (!findings.length && !failed.length) return [];
+if (!reports.length) return [];
 
 // %PREFIX% is filled in by "Post to Slack" from SLACK_PREFIX (e.g. "[TEST] ").
 // Code nodes can't read environment variables; expressions can.
@@ -249,13 +251,16 @@ findings.sort((a, b) => (order[a.risk] ?? 3) - (order[b.risk] ?? 3));
 
 const pages = (n) => \`\${n} \${n === 1 ? 'page' : 'pages'}\`;
 const tested = reports.length - failed.length;
-const headline = [
-  tested ? \`\${findings.length} of \${pages(tested)} \${tested === 1 ? 'needs' : 'need'} attention\` : '',
-  failed.length ? \`\${pages(failed.length)} couldn't be tested\` : '',
-].filter(Boolean).join(' · ');
+const allPassed = !findings.length && !failed.length;
+const headline = allPassed
+  ? (tested === 1 ? '1 page passed' : \`all \${tested} pages passed\`)
+  : [
+    tested ? \`\${findings.length} of \${pages(tested)} \${tested === 1 ? 'needs' : 'need'} attention\` : '',
+    failed.length ? \`\${pages(failed.length)} couldn't be tested\` : '',
+  ].filter(Boolean).join(' · ');
 const blocks = [{
   type: 'header',
-  text: { type: 'plain_text', text: \`%PREFIX%PageSpeed Monitor: \${headline}\` },
+  text: { type: 'plain_text', text: \`%PREFIX%\${allPassed ? '✅ ' : ''}PageSpeed Monitor: \${headline}\` },
 }];
 for (const f of findings) {
   const ai = f.analysis_source === 'claude' ? '' : \` _(\${f.analysis_source} summary)_\`;
@@ -481,7 +486,7 @@ function mainWorkflow({ noSheets }) {
       formTitle: 'Check a page',
       formDescription: [
         'Run a PageSpeed check on one or more public web pages now, instead of waiting for the daily check.',
-        'Results appear in Slack (#pagespeed-alerts) and in the PageSpeed Monitor sheet. One page takes about 2 minutes.',
+        'Results appear in Slack (#pagespeed-alerts) and in the PageSpeed Monitor sheet, usually within a few minutes.',
       ].join('\n\n'),
       formFields: {
         values: [{
@@ -502,8 +507,8 @@ function mainWorkflow({ noSheets }) {
     isValid('Valid form?', [400, 520]),
     formEnding('Form: check started', [620, 500], 'Check started',
       "={{ 'Checking ' + $json.urls.length + ($json.urls.length === 1 ? ' page' : ' pages') + ' now: ' + $json.urls.join(', ') + '.\\n\\n' +"
-      + " 'This takes about 2 minutes for one page, and a little longer for each extra page. You can close this tab.\\n\\n' +"
-      + " 'Every page gets a row in the history tab of the PageSpeed Monitor sheet. A Slack message in #pagespeed-alerts arrives only if a page needs attention or could not be tested. No message means every page passed.' + $json.skipped }}"),
+      + " 'This usually takes a few minutes. You can close this tab.\\n\\n' +"
+      + " 'When it finishes, a message appears in #pagespeed-alerts in Slack (a single line if every page passed), and the results go into the PageSpeed Monitor sheet. No message after 15 minutes? Tell the operator.' + $json.skipped }}"),
     formEnding('Form: not accepted', [620, 700], 'Nothing was checked',
       "={{ $json.error + '\\n\\nGo back and try again.' }}"),
 
@@ -536,7 +541,7 @@ function mainWorkflow({ noSheets }) {
     node('AI analysis (Claude)', 'n8n-nodes-base.executeCommand', 1, [2600, 80], {
       command: '=node scripts/analyze.js --b64 {{ $json.report_b64 }}',
     }, { onError: 'continueRegularOutput' }),
-    code('Findings row', [2820, 80], generatedCode(['sheets.js'], GLUE_FINDINGS)),
+    code('Findings row', [2820, 80], generatedCode(['sheets.js', 'risk.js'], GLUE_FINDINGS)),
     sheetsAppend('Append findings', [3040, 80], 'findings', noSheets, { onError: 'continueRegularOutput' }),
 
     node('Collect for digest', 'n8n-nodes-base.merge', 3.2, [3040, 300], {}),

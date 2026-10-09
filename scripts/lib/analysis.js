@@ -5,6 +5,7 @@
 // output is missing or invalid. The workflow never stops because of the AI step.
 
 const { auditIds } = require('./psi');
+const { riskFromReport } = require('./risk');
 
 const RISK = ['low', 'medium', 'high'];
 const AFFECTS = ['mobile', 'desktop', 'both'];
@@ -39,16 +40,6 @@ const ANALYSIS_SCHEMA = {
     quick_win: { type: 'string', minLength: 1, maxLength: 300 },
   },
 };
-
-// Same rubric the prompt gives Claude, so fallback output reads consistently.
-function riskFromReport(report) {
-  const summaries = Object.values(report.strategies);
-  const worstScore = Math.min(...summaries.map((s) => s.performance));
-  const biggestSaving = Math.max(0, ...summaries.flatMap((s) => s.opportunities.map((o) => o.savings_ms)));
-  if (worstScore < 0.5 || biggestSaving >= 1000) return 'high';
-  if (worstScore < 0.9 || biggestSaving >= 300) return 'medium';
-  return 'low';
-}
 
 const isStr = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
 
